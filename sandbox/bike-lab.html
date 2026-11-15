@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>M0 · Bike dynamics</title>
+    <link rel="stylesheet" href="./bench.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">AVIRAJ / M0 LAB</p>
+          <h1>Bike dynamics</h1>
+          <p>
+            A fixed-step single-track model. Flat ground, a ramp, and the wind.
+          </p>
+        </div>
+        <a href="./bench-lab.html">Mechanism bench ↗</a>
+      </header>
+      <section class="board-panel">
+        <div class="bike-controls">
+          <label
+            >Terrain
+            <select id="terrain">
+              <option value="flat">Flat plane</option>
+              <option value="ramp">Ramp · 8% rise</option>
+            </select></label
+          >
+          <label
+            >Surface
+            <select id="surface">
+              <option>tarmac</option>
+              <option>gravel</option>
+              <option>wood</option>
+              <option>grass</option>
+              <option>sand</option>
+              <option>mud</option>
+            </select></label
+          >
+          <label
+            >Wind along X
+            <input id="wind" type="range" min="-10" max="10" value="0" /><output
+              id="wind-value"
+              >0 m/s</output
+            ></label
+          >
+          <label
+            >Crosswind
+            <input id="crosswind" type="range" min="-15" max="15" value="0"
+          /></label>
+          <label><input type="checkbox" id="wet" /> Wet surface</label
+          ><label
+            ><input type="checkbox" id="assist" checked /> Rider assist</label
+          >
+          <button id="reset">Reset bike</button
+          ><button id="coast">Coast from 10 m/s</button
+          ><button id="pause">Pause</button>
+        </div>
+        <div
+          id="bike-stage"
+          aria-label="Three-dimensional bike physics sandbox"
+        ></div>
+        <div id="telemetry" class="gauges" aria-live="off"></div>
+        <p id="events" role="status">Ready. Press W to pedal.</p>
+        <p>
+          <kbd>W</kbd> pedal · <kbd>S</kbd> brake · <kbd>A</kbd>
+          <kbd>D</kbd> lean · <kbd>Space</kbd> hop · <kbd>Shift</kbd> tuck ·
+          <kbd>R</kbd> sprint
+        </p>
+        <p>
+          Plain-data simulation, 60 Hz / 4 substeps. The grey bike is a
+          diagnostic view. Gear changes, drivetrain wear progression, rider rig
+          and campaign integration belong to later milestones.
+        </p>
+      </section>
+      <footer>
+        Ride state stays in this page · No campaign saves are changed · Distance
+        and hash are available in the telemetry
+      </footer>
+    </main>
+    <script type="module" src="./bike.ts"></script>
+  </body>
+</html>
