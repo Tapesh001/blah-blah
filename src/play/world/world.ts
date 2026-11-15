@@ -811,12 +811,13 @@ void main(){
   for (let k = 0; k < PN; k++) pPos[k * 3 + 1] = -999;
   world.resize();
   window.addEventListener('resize', world.resize);
-  window.addEventListener('pagehide', () => {
+  window.addEventListener('pagehide', (event) => {
+    if (event.persisted) return;
     gpuTimer.clear(); pmrem.dispose(); environmentTarget?.dispose(); environmentSky.material.dispose();
     reflection.dispose(); reflection.geometry.dispose(); ao.dispose(); bloom.dispose(); grade.dispose(); composer.dispose();
     window.removeEventListener('resize', world.resize);
     canvas.removeEventListener('webglcontextlost', contextLost);
-  }, { once: true });
+  });
   return world;
 }
 
