@@ -262,7 +262,7 @@ export function buildTerrainMesh(G: IsleGrid, mat: THREE.Material): THREE.Mesh {
     if (h < 0.2) c.copy(cBed).lerp(cSand, THREE.MathUtils.smoothstep(h, -3, 0.2));
     else {
       c.copy(cGrassA).lerp(cGrassB, nz);
-      c.lerp(cHeath, THREE.MathUtils.smoothstep(h, 55, 105) * 0.8);
+      c.lerp(cHeath, THREE.MathUtils.smoothstep(h, 70, 115) * 0.3);
       c.lerp(cSand, 1 - THREE.MathUtils.smoothstep(h, 1.2, 3.5));
       const rock = 1 - THREE.MathUtils.smoothstep(ny, 0.72, 0.86);
       c.lerp(nz > 0.5 ? cRock : cRockD, rock);
@@ -272,7 +272,7 @@ export function buildTerrainMesh(G: IsleGrid, mat: THREE.Material): THREE.Mesh {
       c.lerp(cRoad, 1 - THREE.MathUtils.smoothstep(rd, 3.0, 4.2));
       if (rd < 0.45 && Math.floor((x + z) / 6) % 2 === 0) c.setHex(0xd8d2b0);
     }
-    c.multiplyScalar(0.85 + 0.3 * fbm(x / 3.1, z / 3.1, 2));
+    c.multiplyScalar(1.25 + 0.4 * fbm(x / 3.1, z / 3.1, 2));
     col[k * 3] = c.r;
     col[k * 3 + 1] = c.g;
     col[k * 3 + 2] = c.b;
