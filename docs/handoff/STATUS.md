@@ -78,4 +78,6 @@ are retained; this milestone produces a deployable `dist/` artifact.
 - Both GitHub Actions jobs (`check` and `browser`) passed on the implementation
   commit: [Verify run 43696796643](https://github.com/Tapesh001/blah-blah/actions/runs/43696796643).
   The Linux browser job reports all 11 tests passing.
-  The combined graphics integration is being revalidated separately.
+  The combined graphics integration at `d7c1c01` also passed both jobs:
+  [Verify run 43697274162](https://github.com/Tapesh001/blah-blah/actions/runs/43697274162).
+  This run includes all 43 unit tests and 12 browser tests.
