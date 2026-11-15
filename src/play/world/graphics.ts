@@ -5,30 +5,32 @@ export const GRAPHICS = {
   high: {
     scale: 1,
     maxRatio: 1,
-    shadow: 2048,
-    ocean: 256,
-    grass: 80000,
+    shadow: 1024,
+    ocean: 128,
+    grass: 24000,
     cloudSteps: 8,
-    reflection: 768,
-    samples: 2,
+    reflection: 256,
+    samples: 0,
   },
   ultra: {
-    scale: 1.5,
-    maxRatio: 2,
-    shadow: 4096,
-    ocean: 640,
-    grass: 240000,
-    cloudSteps: 24,
-    reflection: 2048,
-    samples: 4,
+    scale: 1,
+    maxRatio: 1.25,
+    shadow: 2048,
+    ocean: 256,
+    grass: 60000,
+    cloudSteps: 12,
+    reflection: 768,
+    samples: 2,
   },
 } as const;
 
 export function savedGraphics(): GraphicsQuality {
   try {
-    return localStorage.getItem('cg-graphics') === 'high' ? 'high' : 'ultra';
+    return localStorage.getItem('cg-graphics-performance') === 'ultra'
+      ? 'ultra'
+      : 'high';
   } catch {
-    return 'ultra';
+    return 'high';
   }
 }
 
@@ -39,15 +41,61 @@ export function graphicsRatio(
   deviceRatio: number,
   quality: GraphicsQuality,
   maxSize: number,
+  renderScale = 1,
 ) {
   const settings = GRAPHICS[quality];
-  return Math.min(
-    settings.maxRatio,
-    deviceRatio * settings.scale,
-    maxSize / width,
-    maxSize / height,
-    Math.sqrt(8_000_000 / (width * height)),
+  return (
+    renderScale *
+    Math.min(
+      settings.maxRatio,
+      deviceRatio * settings.scale,
+      maxSize / width,
+      maxSize / height,
+      Math.sqrt(
+        (quality === 'ultra' ? 3_000_000 : 2_100_000) / (width * height),
+      ),
+    )
   );
+}
+
+/** React to sustained frame cost, not single compilation spikes or hidden tabs. */
+export class FrameBudget {
+  scale = 1;
+  private warmup = 1500;
+  private elapsed = 0;
+  private frames = 0;
+  private fastWindows = 0;
+
+  reset() {
+    this.scale = 1;
+    this.warmup = 1500;
+    this.elapsed = this.frames = this.fastWindows = 0;
+  }
+
+  sample(ms: number, quality: GraphicsQuality): 'high' | 'resize' | null {
+    if (!Number.isFinite(ms) || ms <= 0 || ms >= 1000) return null;
+    if (this.warmup > 0) {
+      this.warmup -= ms;
+      return null;
+    }
+    this.elapsed += ms;
+    this.frames++;
+    if (this.elapsed < 2000) return null;
+    const average = this.elapsed / this.frames;
+    this.elapsed = this.frames = 0;
+    if (quality === 'ultra' && average > 40) return 'high';
+    const previous = this.scale;
+    if (average > 25) {
+      this.scale = Math.max(0.6, Math.round((this.scale - 0.1) * 100) / 100);
+      this.fastWindows = 0;
+    } else if (average < 17) {
+      if (++this.fastWindows >= 2) {
+        this.scale = Math.min(1, Math.round((this.scale + 0.05) * 100) / 100);
+        this.fastWindows = 0;
+      }
+    } else this.fastWindows = 0;
+    return previous !== this.scale ? 'resize' : null;
+  }
 }
 
 /** Procedural rock/soil grain supplies close-up color and view-space bump detail. */

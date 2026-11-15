@@ -7,7 +7,9 @@ test('production entry starts the playable bike world and renders without errors
   // do not disable effects or substitute the M0 stub renderer for the real game.
   test.setTimeout(90000);
   await page.setViewportSize({ width: 480, height: 270 });
-  await page.addInitScript(() => localStorage.setItem('cg-graphics', 'high'));
+  await page.addInitScript(() =>
+    localStorage.setItem('cg-graphics-performance', 'high'),
+  );
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
@@ -33,7 +35,7 @@ test('production entry starts the playable bike world and renders without errors
   });
   await expect(page.locator('#render-stats')).toHaveAttribute(
     'title',
-    /480 × 270 render pixels · [\d,]+ triangles · [1-9]\d* draws/,
+    /[1-9]\d* × [1-9]\d* render pixels · [\d,]+ triangles · [1-9]\d* draws/,
   );
   await expect(page.locator('#gauges')).toContainText('speed');
   await page.screenshot({ path: testInfo.outputPath('playable-world.png') });
@@ -49,7 +51,7 @@ test('production entry starts the playable bike world and renders without errors
   });
   await expect(page.locator('#render-stats')).toHaveAttribute(
     'title',
-    /480 × 270 render pixels/,
+    /[1-9]\d* × [1-9]\d* render pixels/,
   );
   await page.keyboard.press('v');
   await expect(page.locator('#gauges')).toContainText('trim');

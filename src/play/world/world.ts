@@ -11,6 +11,7 @@ import { createCoastalPine, createRoadDetails } from './scenery';
 import { GpuTimer } from '../../gfx/frame-tools.js';
 import {
   GRAPHICS,
+  FrameBudget,
   savedGraphics,
   graphicsRatio,
   detailTerrain,
@@ -95,6 +96,7 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
   sky.scale.setScalar(12000);
   scene.add(sky);
   const skyU = sky.material.uniforms;
+  skyU['cloudCoverage']!.value = quality === 'high' ? 0.4 : 0;
   const sunDir = new THREE.Vector3();
   const sun = new THREE.DirectionalLight(0xffe2b8, 2);
   sun.castShadow = true;
@@ -168,6 +170,7 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
     uFog: { value: new THREE.Color() },
     uFogD: { value: 0.0006 },
     uFoam: { value: 0.2 },
+    uUseReflection: { value: quality === 'ultra' ? 1 : 0 },
     uReflection: reflectionMaterial.uniforms['tDiffuse']!,
     uReflectionMatrix: { value: reflectionMatrix },
     uHeightA: { value: hTexA },
@@ -210,7 +213,7 @@ void main(){
  gl_Position=projectionMatrix*viewMatrix*vec4(P,1.);
 }`,
       fragmentShader: /* glsl */ `
-uniform float uTime,uSea,uFogD,uFoam; uniform vec3 uCam,uSun,uSunCol,uHorizon,uZenith,uDeep,uFog;
+uniform float uTime,uSea,uFogD,uFoam,uUseReflection; uniform vec3 uCam,uSun,uSunCol,uHorizon,uZenith,uDeep,uFog;
 uniform sampler2D uReflection,uHeightA,uHeightB; uniform mat4 uReflectionMatrix; uniform vec3 uGridA,uGridB;
 varying vec3 vW; varying vec3 vN; varying float vCrest;
 ${NOISE_GLSL}
@@ -230,7 +233,7 @@ void main(){
  vec2 reflectionUV=projected.xy/projected.w+N.xz*0.018/(1.+dist*0.008);
  float reflectionEdge=smoothstep(0.,0.06,reflectionUV.x)*smoothstep(0.,0.06,reflectionUV.y)*(1.-smoothstep(0.94,1.,reflectionUV.x))*(1.-smoothstep(0.94,1.,reflectionUV.y))*step(0.,projected.w);
  vec3 reflected=min(texture2D(uReflection,clamp(reflectionUV,vec2(0.002),vec2(0.998))).rgb,vec3(8.));
- skyc=mix(skyc,reflected,reflectionEdge*0.88);
+ skyc=mix(skyc,reflected,reflectionEdge*0.88*uUseReflection);
  float sp=pow(max(dot(R,uSun),0.),380.)*1.1+pow(max(dot(R,uSun),0.),24.)*0.07;
  vec3 scatter=vec3(0.015,0.18,0.16)*max(0.,vCrest+0.15)*(0.35+0.65*max(dot(uSun,vec3(0,1,0)),0.))*1.3;
  vec3 col=mix(uDeep+scatter,skyc,F)+uSunCol*sp;
@@ -310,6 +313,7 @@ void main(){
   clouds.position.y = 900;
   clouds.frustumCulled = false;
   clouds.renderOrder = -1;
+  clouds.visible = quality === 'ultra';
   scene.add(clouds);
 
   /* ---- grass (camera-following instanced tile) ---- */
@@ -428,6 +432,7 @@ void main(){
     return g.index ? g.toNonIndexed() : g;
   };
   const pine = createCoastalPine();
+  const distantPine = createCoastalPine(true);
   const propMat = new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.9,
@@ -440,7 +445,10 @@ void main(){
     sMin: number,
     sMax: number,
   ) => {
-    const im = new THREE.InstancedMesh(geo, propMat, count);
+    const cells = new Map<
+      string,
+      { x: number; z: number; matrices: THREE.Matrix4[] }
+    >();
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const e = new THREE.Euler();
@@ -457,12 +465,48 @@ void main(){
         q.setFromEuler(e),
         new THREE.Vector3(s, s * (0.85 + rnd() * 0.4), s),
       );
-      im.setMatrixAt(n++, m);
+      const cellX = Math.floor(x / 100) * 100 + 50;
+      const cellZ = Math.floor(z / 100) * 100 + 50;
+      const key = cellX + ',' + cellZ;
+      let cell = cells.get(key);
+      if (!cell) {
+        cell = { x: cellX, z: cellZ, matrices: [] };
+        cells.set(key, cell);
+      }
+      m.elements[12]! -= cellX;
+      m.elements[14]! -= cellZ;
+      cell.matrices.push(m.clone());
+      n++;
     }
-    im.count = n;
-    im.castShadow = true;
-    im.receiveShadow = true;
-    scene.add(im);
+    for (const cell of cells.values()) {
+      const makeInstances = (geometry: THREE.BufferGeometry) => {
+        const instances = new THREE.InstancedMesh(
+          geometry,
+          propMat,
+          cell.matrices.length,
+        );
+        cell.matrices.forEach((matrix, index) =>
+          instances.setMatrixAt(index, matrix),
+        );
+        instances.castShadow = true;
+        instances.receiveShadow = true;
+        instances.computeBoundingSphere();
+        return instances;
+      };
+      const lod = new THREE.LOD();
+      lod.position.set(cell.x, heightAt(cell.x, cell.z), cell.z);
+      // Geometry keeps its sampled terrain height, while the LOD distance is
+      // measured from the cell's surface rather than sea level.
+      const near = makeInstances(geo);
+      near.position.y = -lod.position.y;
+      lod.addLevel(near, 0);
+      if (geo === pine) {
+        const far = makeInstances(distantPine);
+        far.position.y = -lod.position.y;
+        lod.addLevel(far, 120, 0.15);
+      }
+      scene.add(lod);
+    }
   };
   const farFromRoad = (x: number, z: number, d: number) => {
     for (const R of ROADS)
@@ -797,6 +841,7 @@ void main(){
   ao.enabled = quality === 'ultra';
   composer.addPass(ao);
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.45, 1.3);
+  bloom.enabled = quality === 'ultra';
   composer.addPass(bloom);
   const grade = new ShaderPass({
     uniforms: {
@@ -810,9 +855,7 @@ void main(){
 uniform sampler2D tDiffuse; uniform float uStorm,uSpeed,uFlash; varying vec2 vUv;
 void main(){
  vec2 c=vUv-0.5; float r=length(c);
- vec3 col=vec3(0.); float w=0.;
- for(int i=0;i<6;i++){float t=float(i)/5.; vec2 u=0.5+c*(1.-uSpeed*0.009*t*r*2.); col+=texture2D(tDiffuse,u).rgb; w+=1.;}
- col/=w;
+ vec3 col=texture2D(tDiffuse,vUv).rgb;
  float l=dot(col,vec3(0.2126,0.7152,0.0722));
  col=mix(col,vec3(l)*vec3(0.86,0.95,1.08),uStorm*0.45);
  col*=1.04;
@@ -840,6 +883,7 @@ void main(){
     lastFrame = performance.now(),
     averageFrameMs = 16.7;
   const renderSize = new THREE.Vector2();
+  const frameBudget = new FrameBudget();
   const contextLost = () => gpuTimer.clear(true);
   canvas.addEventListener('webglcontextlost', contextLost);
 
@@ -857,7 +901,7 @@ void main(){
       quality = next;
       world.quality = next;
       try {
-        localStorage.setItem('cg-graphics', next);
+        localStorage.setItem('cg-graphics-performance', next);
       } catch {
         /* Storage can be disabled. */
       }
@@ -885,6 +929,11 @@ void main(){
       composer.renderTarget2.dispose();
       ao.updateGtaoMaterial({ samples: next === 'ultra' ? 16 : 8 });
       ao.enabled = next === 'ultra';
+      bloom.enabled = next === 'ultra';
+      clouds.visible = next === 'ultra';
+      skyU['cloudCoverage']!.value = next === 'high' ? 0.4 : 0;
+      oceanU.uUseReflection.value = next === 'ultra' ? 1 : 0;
+      frameBudget.reset();
       world.resize();
     },
     graphicsStats() {
@@ -983,13 +1032,15 @@ void main(){
       skyU['rayleigh']!.value = 1.5 - 1.0 * s;
       skyU['mieCoefficient']!.value = 0.0035 + 0.02 * s;
       skyU['mieDirectionalG']!.value = 0.78;
+      skyU['time']!.value = world.time;
+      skyU['cloudCoverage']!.value = quality === 'high' ? 0.3 + s * 0.5 : 0;
       if (Math.abs(s - environmentStorm) > 0.08) {
         const nextEnvironment = pmrem.fromScene(
           environmentScene,
           0.04,
           0.1,
           20000,
-          { size: 256 },
+          { size: 128 },
         );
         scene.environment = nextEnvironment.texture;
         environmentTarget?.dispose();
@@ -1100,18 +1151,22 @@ void main(){
       lastFrame = now;
       if (elapsed > 0 && elapsed < 1000)
         averageFrameMs += (elapsed - averageFrameMs) * 0.08;
+      if (!document.hidden) {
+        const adjustment = frameBudget.sample(elapsed, quality);
+        if (adjustment === 'high') world.setQuality('high');
+        else if (adjustment === 'resize') world.resize();
+      }
       renderer.info.reset();
       gpuTimer.beginFrame(renderFrame++);
       gpuTimer.begin('graphics');
       try {
         renderer.shadowMap.autoUpdate = false;
-        renderer.shadowMap.needsUpdate =
-          quality === 'ultra' || renderFrame % 2 === 0;
+        renderer.shadowMap.needsUpdate = false;
         scene.updateMatrixWorld();
         camera.updateMatrixWorld();
         ocean.visible = false;
         try {
-          if (quality === 'ultra' || renderFrame % 3 === 0) {
+          if (quality === 'ultra' && renderFrame % 4 === 0) {
             grass.visible = false;
             reflection.onBeforeRender(
               renderer,
@@ -1132,6 +1187,8 @@ void main(){
         } finally {
           ocean.visible = true;
         }
+        renderer.shadowMap.needsUpdate =
+          renderFrame === 1 || renderFrame % (quality === 'high' ? 3 : 2) === 0;
         composer.render();
       } finally {
         gpuTimer.endFrame();
@@ -1146,6 +1203,7 @@ void main(){
         window.devicePixelRatio || 1,
         quality,
         renderer.capabilities.maxTextureSize,
+        frameBudget.scale,
       );
       renderer.setPixelRatio(ratio);
       renderer.setSize(w, h, false);

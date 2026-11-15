@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { heightAt, ROADS } from './terrain';
 
 /** Shared instanced-tree geometry: overlapping boughs break up the silhouette. */
-export function createCoastalPine(): THREE.BufferGeometry {
+export function createCoastalPine(distant = false): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const paint = (geometry: THREE.BufferGeometry, color: number) => {
     const g = geometry.index ? geometry.toNonIndexed() : geometry;
@@ -23,11 +23,11 @@ export function createCoastalPine(): THREE.BufferGeometry {
     new THREE.CylinderGeometry(0.06, 0.23, 7.6, 9).translate(0, 3.8, 0),
     0x594633,
   );
-  for (let tier = 0; tier < 6; tier++) {
-    const height = 2.1 + tier * 0.9;
-    const spread = 1.7 - tier * 0.23;
-    for (let branch = 0; branch < 6; branch++) {
-      const angle = (branch * Math.PI) / 3 + tier * 2.4;
+  for (let tier = 0; tier < (distant ? 4 : 6); tier++) {
+    const height = 2.1 + tier * (distant ? 1.35 : 0.9);
+    const spread = 1.7 - tier * (distant ? 0.35 : 0.23);
+    for (let branch = 0; branch < (distant ? 4 : 6); branch++) {
+      const angle = (branch * Math.PI) / (distant ? 2 : 3) + tier * 2.4;
       const direction = new THREE.Vector3(
         Math.cos(angle),
         0.22,
@@ -38,18 +38,19 @@ export function createCoastalPine(): THREE.BufferGeometry {
         new THREE.Vector3(0, 1, 0),
         direction,
       );
-      paint(
-        new THREE.CylinderGeometry(0.015, 0.045, length, 5)
-          .applyQuaternion(rotation)
-          .translate(
-            (direction.x * length) / 2,
-            height + (direction.y * length) / 2,
-            (direction.z * length) / 2,
-          ),
-        0x594633,
-      );
+      if (!distant)
+        paint(
+          new THREE.CylinderGeometry(0.015, 0.045, length, 5)
+            .applyQuaternion(rotation)
+            .translate(
+              (direction.x * length) / 2,
+              height + (direction.y * length) / 2,
+              (direction.z * length) / 2,
+            ),
+          0x594633,
+        );
       // Flattened irregular needle masses, distinct from a solid stacked cone.
-      const tuft = new THREE.IcosahedronGeometry(1, 1);
+      const tuft = new THREE.IcosahedronGeometry(1, distant ? 0 : 1);
       const p = tuft.getAttribute('position');
       for (let i = 0; i < p.count; i++) {
         const ripple = 1 + 0.13 * Math.sin(p.getX(i) * 17 + p.getZ(i) * 23);

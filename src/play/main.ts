@@ -16,7 +16,7 @@ ui.style.cssText =
 ui.innerHTML = `
 <div id="obj" style="position:absolute;top:18px;left:22px;max-width:calc(100% - 190px);font-size:15px;letter-spacing:.08em;text-transform:uppercase"></div>
 <div style="position:absolute;right:14px;top:14px;pointer-events:auto;background:#10222dd9;border:1px solid #aec4cf44;border-radius:8px;padding:9px 12px;font-size:12px">
- <label for="graphics">Graphics </label><select id="graphics" style="font:inherit;background:#203945;color:#fff5dd;border:1px solid #8aa6b4;border-radius:4px;padding:3px"><option value="ultra">Ultra</option><option value="high">High</option></select>
+ <label for="graphics">Graphics </label><select id="graphics" style="font:inherit;background:#203945;color:#fff5dd;border:1px solid #8aa6b4;border-radius:4px;padding:3px"><option value="ultra">Ultra</option><option value="high">Balanced</option></select>
  <div id="render-stats" style="margin-top:5px;font-variant-numeric:tabular-nums;color:#c9dce4"></div>
 </div>
 <div id="gauges" style="position:absolute;bottom:20px;left:22px;font:14px/1.6 ui-monospace,monospace"></div>
@@ -253,6 +253,9 @@ world.renderer.setAnimationLoop(() => {
   world.render();
   if (performance.now() - lastGraphicsReport > 500) {
     const stats = world.graphicsStats();
+    if (graphicsSelect.value !== world.quality)
+      hud.toast('Switched to Balanced for smoother play');
+    graphicsSelect.value = world.quality;
     $('render-stats').textContent =
       `${Math.round(stats.fps)} fps · ${stats.gpuMs === null ? 'WebGL2' : stats.gpuMs.toFixed(1) + ' ms GPU'}`;
     $('render-stats').title =
