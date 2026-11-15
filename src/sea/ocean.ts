@@ -1,15 +1,32 @@
+interface OceanEnvironment {
+  storm: number;
+  windHeading?: number;
+  windSpeed?: number;
+}
+interface Vector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+interface OceanSample {
+  height: number;
+  normal: Vector3;
+  velocity: Vector3;
+}
+
 const GRAVITY = 9.81;
 const TAU = 2 * Math.PI;
-const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+const clamp = (value: number, low: number, high: number) =>
+  Math.max(low, Math.min(high, value));
 const RATIOS = [1, 0.83, 0.68, 0.55, 0.44, 0.35, 0.28, 0.22, 0.17, 1.8];
 const WEIGHTS = [1, 0.8, 0.65, 0.5, 0.4, 0.3, 0.22, 0.16, 0.12, 0.65];
 const ENERGY_SCALE = Math.sqrt(WEIGHTS.reduce((sum, w) => sum + w * w, 0) / 2);
 
-function stormHeight(storm) {
+function stormHeight(storm: number) {
   return storm <= 0.5 ? 0.4 + 1.6 * storm : 1.2 + 3.6 * (storm - 0.5);
 }
 
-function finite(value, name) {
+function finite(value: number, name: string) {
   if (!Number.isFinite(value)) throw new TypeError(`${name} must be finite`);
   return value;
 }
@@ -26,16 +43,22 @@ function finite(value, name) {
  * Parameters relax exponentially over 10 seconds. Integrating phase, rather
  * than multiplying time by changing frequency, preserves wave continuity.
  */
-export function createOcean(env, rng = Math.random) {
+export function createOcean(
+  env: OceanEnvironment,
+  rng: () => number = Math.random,
+) {
   const initialStorm = clamp(finite(env.storm, 'storm'), 0, 1);
   const heading = finite(env.windHeading ?? 0, 'windHeading');
   const waves = RATIOS.map((ratio, index) => {
     const random = finite(rng(), 'rng result');
-    if (random < 0 || random >= 1) throw new RangeError('rng must return a value in [0, 1)');
-    const angle = heading + (index === 9 ? -50 : -35 + index * 70 / 8) * Math.PI / 180;
+    if (random < 0 || random >= 1)
+      throw new RangeError('rng must return a value in [0, 1)');
+    const angle =
+      heading + ((index === 9 ? -50 : -35 + (index * 70) / 8) * Math.PI) / 180;
     return {
       direction: { x: Math.cos(angle), z: Math.sin(angle) },
-      amplitude: stormHeight(initialStorm) * WEIGHTS[index] / (4 * ENERGY_SCALE),
+      amplitude:
+        (stormHeight(initialStorm) * WEIGHTS[index]!) / (4 * ENERGY_SCALE),
       wavelength: (18 + 42 * initialStorm) * ratio,
       steepness: (0.25 + 0.35 * initialStorm) / RATIOS.length,
       phase: 0,
@@ -47,19 +70,30 @@ export function createOcean(env, rng = Math.random) {
   // Scratch data is private to this instance. Repeated height/sample calls
   // allocate nothing when sample receives a reusable output object.
   const displacement = { x: 0, z: 0 };
-  function horizontal(x, z) {
+  function horizontal(x: number, z: number) {
     displacement.x = 0;
     displacement.z = 0;
     for (const wave of waves) {
       const k = TAU / wave.wavelength;
-      const theta = k * (wave.direction.x * x + wave.direction.z * z) - wave.phase + wave.offset;
+      const theta =
+        k * (wave.direction.x * x + wave.direction.z * z) -
+        wave.phase +
+        wave.offset;
       const offset = wave.steepness * wave.amplitude * Math.cos(theta);
       displacement.x += wave.direction.x * offset;
       displacement.z += wave.direction.z * offset;
     }
   }
 
-  function sample(x, z, out = { height: 0, normal: {}, velocity: {} }) {
+  function sample(
+    x: number,
+    z: number,
+    out: OceanSample = {
+      height: 0,
+      normal: { x: 0, y: 1, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 },
+    },
+  ) {
     finite(x, 'x');
     finite(z, 'z');
     let u = x;
@@ -70,8 +104,14 @@ export function createOcean(env, rng = Math.random) {
       v = z - displacement.z;
     }
     let height = 0;
-    let xx = 1, xz = 0, zz = 1, yx = 0, yz = 0;
-    let vx = 0, vy = 0, vz = 0;
+    let xx = 1,
+      xz = 0,
+      zz = 1,
+      yx = 0,
+      yz = 0;
+    let vx = 0,
+      vy = 0,
+      vz = 0;
     for (const wave of waves) {
       const { direction: d, amplitude: a, steepness: q } = wave;
       const k = TAU / wave.wavelength;
@@ -103,32 +143,50 @@ export function createOcean(env, rng = Math.random) {
     out.velocity.z = vz;
     return out;
   }
-  const heightSample = { height: 0, normal: {}, velocity: {} };
+  const heightSample: OceanSample = {
+    height: 0,
+    normal: { x: 0, y: 1, z: 0 },
+    velocity: { x: 0, y: 0, z: 0 },
+  };
 
   return {
     waves,
-    get time() { return time; },
-    get whitecaps() { return clamp(((env.windSpeed ?? 7) - 7) / 13, 0, 1); },
-    get significantHeight() {
-      return 4 * Math.sqrt(waves.reduce((sum, wave) => sum + wave.amplitude ** 2 / 2, 0));
+    get time() {
+      return time;
     },
-    update(dt) {
+    get whitecaps() {
+      return clamp(((env.windSpeed ?? 7) - 7) / 13, 0, 1);
+    },
+    get significantHeight() {
+      return (
+        4 *
+        Math.sqrt(waves.reduce((sum, wave) => sum + wave.amplitude ** 2 / 2, 0))
+      );
+    },
+    update(dt: number) {
       finite(dt, 'dt');
       if (dt < 0) throw new RangeError('dt must be nonnegative');
       const storm = clamp(finite(env.storm, 'storm'), 0, 1);
       const blend = -Math.expm1(-dt / 10);
       for (let i = 0; i < waves.length; i++) {
-        const wave = waves[i];
-        const oldOmega = Math.sqrt(GRAVITY * TAU / wave.wavelength);
-        wave.amplitude += (stormHeight(storm) * WEIGHTS[i] / (4 * ENERGY_SCALE) - wave.amplitude) * blend;
-        wave.wavelength += ((18 + 42 * storm) * RATIOS[i] - wave.wavelength) * blend;
-        wave.steepness += ((0.25 + 0.35 * storm) / waves.length - wave.steepness) * blend;
-        const newOmega = Math.sqrt(GRAVITY * TAU / wave.wavelength);
-        wave.phase = (wave.phase + dt * (oldOmega + newOmega) / 2) % TAU;
+        const wave = waves[i]!;
+        const oldOmega = Math.sqrt((GRAVITY * TAU) / wave.wavelength);
+        wave.amplitude +=
+          ((stormHeight(storm) * WEIGHTS[i]!) / (4 * ENERGY_SCALE) -
+            wave.amplitude) *
+          blend;
+        wave.wavelength +=
+          ((18 + 42 * storm) * RATIOS[i]! - wave.wavelength) * blend;
+        wave.steepness +=
+          ((0.25 + 0.35 * storm) / waves.length - wave.steepness) * blend;
+        const newOmega = Math.sqrt((GRAVITY * TAU) / wave.wavelength);
+        wave.phase = (wave.phase + (dt * (oldOmega + newOmega)) / 2) % TAU;
       }
       time += dt;
     },
-    height(x, z) { return sample(x, z, heightSample).height; },
+    height(x: number, z: number) {
+      return sample(x, z, heightSample).height;
+    },
     sample,
   };
 }

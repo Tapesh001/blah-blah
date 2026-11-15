@@ -1,0 +1,243 @@
+{
+  "measuredAt": "2026-11-15T08:48:17.555Z",
+  "hardware": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "renderer": "ANGLE (Intel, Intel(R) UHD Graphics (0x00004688) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "vendor": "Google Inc. (Intel)"
+  },
+  "contextRecovery": "passed",
+  "errors": [],
+  "measurements": [
+    {
+      "frame": 418,
+      "contextLost": false,
+      "cpuMs": 0.29999999701976776,
+      "gpuMs": 2.0989020000000003,
+      "gpuFrame": 417,
+      "gpuTimerSupported": true,
+      "renderScale": 0.5,
+      "width": 960,
+      "height": 540,
+      "canvasWidth": 1920,
+      "canvasHeight": 1080,
+      "drawCalls": 37,
+      "triangles": 928,
+      "geometries": 4,
+      "textures": 5,
+      "passes": [
+        {
+          "name": "clear",
+          "enabled": true,
+          "meanCpuMs": 0.042500000447034836,
+          "meanGpuMs": 0.20872654166666665
+        },
+        {
+          "name": "shadows",
+          "enabled": true,
+          "meanCpuMs": 0.06833333273728688,
+          "meanGpuMs": 1.0466132500000005
+        },
+        {
+          "name": "opaque",
+          "enabled": true,
+          "meanCpuMs": 0.1183333333581686,
+          "meanGpuMs": 0.05897230833333334
+        },
+        {
+          "name": "sky",
+          "enabled": true,
+          "meanCpuMs": 0.01916666639347871,
+          "meanGpuMs": 0.11768621666666661
+        },
+        {
+          "name": "ocean",
+          "enabled": true,
+          "meanCpuMs": 0.009166666492819785,
+          "meanGpuMs": 0.130210475
+        },
+        {
+          "name": "transparents",
+          "enabled": true,
+          "meanCpuMs": 0.0191666666418314,
+          "meanGpuMs": 0.011228675000000004
+        },
+        {
+          "name": "post",
+          "enabled": true,
+          "meanCpuMs": 0.010833333308498064,
+          "meanGpuMs": 0.2601623333333333
+        },
+        {
+          "name": "test-gain",
+          "enabled": false,
+          "meanCpuMs": null,
+          "meanGpuMs": null
+        },
+        {
+          "name": "upscale",
+          "enabled": true,
+          "meanCpuMs": 0.01000000002483527,
+          "meanGpuMs": 0.37058854166666666
+        }
+      ],
+      "samples": 120,
+      "gpuSamples": 120,
+      "meanCpuMs": 0.34499999942878884,
+      "meanGpuMs": 2.2041883416666663
+    },
+    {
+      "frame": 598,
+      "contextLost": false,
+      "cpuMs": 0.20000000298023224,
+      "gpuMs": 3.5036939999999994,
+      "gpuFrame": 597,
+      "gpuTimerSupported": true,
+      "renderScale": 0.75,
+      "width": 1440,
+      "height": 810,
+      "canvasWidth": 1920,
+      "canvasHeight": 1080,
+      "drawCalls": 37,
+      "triangles": 928,
+      "geometries": 4,
+      "textures": 5,
+      "passes": [
+        {
+          "name": "clear",
+          "enabled": true,
+          "meanCpuMs": 0.05416666716337204,
+          "meanGpuMs": 0.6265524285714289
+        },
+        {
+          "name": "shadows",
+          "enabled": true,
+          "meanCpuMs": 0.10666666676600774,
+          "meanGpuMs": 1.1559182436974793
+        },
+        {
+          "name": "opaque",
+          "enabled": true,
+          "meanCpuMs": 0.13583333268761635,
+          "meanGpuMs": 0.11327477310924366
+        },
+        {
+          "name": "sky",
+          "enabled": true,
+          "meanCpuMs": 0.01583333338300387,
+          "meanGpuMs": 0.37277048739495805
+        },
+        {
+          "name": "ocean",
+          "enabled": true,
+          "meanCpuMs": 0.024999999875823655,
+          "meanGpuMs": 0.28007128571428563
+        },
+        {
+          "name": "transparents",
+          "enabled": true,
+          "meanCpuMs": 0.019166667014360428,
+          "meanGpuMs": 0.013307025210084034
+        },
+        {
+          "name": "post",
+          "enabled": true,
+          "meanCpuMs": 0.01500000034769376,
+          "meanGpuMs": 0.7130278151260506
+        },
+        {
+          "name": "test-gain",
+          "enabled": false,
+          "meanCpuMs": null,
+          "meanGpuMs": null
+        },
+        {
+          "name": "upscale",
+          "enabled": true,
+          "meanCpuMs": 0.014166666691501935,
+          "meanGpuMs": 0.6553606722689075
+        }
+      ],
+      "samples": 120,
+      "gpuSamples": 119,
+      "meanCpuMs": 0.4608333334326744,
+      "meanGpuMs": 3.9302827310924364
+    },
+    {
+      "frame": 779,
+      "contextLost": false,
+      "cpuMs": 0.7999999970197678,
+      "gpuMs": 6.299421000000001,
+      "gpuFrame": 775,
+      "gpuTimerSupported": true,
+      "renderScale": 1,
+      "width": 1920,
+      "height": 1080,
+      "canvasWidth": 1920,
+      "canvasHeight": 1080,
+      "drawCalls": 37,
+      "triangles": 928,
+      "geometries": 4,
+      "textures": 5,
+      "passes": [
+        {
+          "name": "clear",
+          "enabled": true,
+          "meanCpuMs": 0.09416666713853677,
+          "meanGpuMs": 1.0111267250000002
+        },
+        {
+          "name": "shadows",
+          "enabled": true,
+          "meanCpuMs": 0.16333333315948645,
+          "meanGpuMs": 1.230071116666666
+        },
+        {
+          "name": "opaque",
+          "enabled": true,
+          "meanCpuMs": 0.27750000009934106,
+          "meanGpuMs": 0.18967768333333326
+        },
+        {
+          "name": "sky",
+          "enabled": true,
+          "meanCpuMs": 0.0408333328862985,
+          "meanGpuMs": 0.8800060166666667
+        },
+        {
+          "name": "ocean",
+          "enabled": true,
+          "meanCpuMs": 0.0191666666418314,
+          "meanGpuMs": 0.5100546333333333
+        },
+        {
+          "name": "transparents",
+          "enabled": true,
+          "meanCpuMs": 0.03666666696468989,
+          "meanGpuMs": 0.01947130833333334
+        },
+        {
+          "name": "post",
+          "enabled": true,
+          "meanCpuMs": 0.0408333337555329,
+          "meanGpuMs": 1.7307178166666668
+        },
+        {
+          "name": "test-gain",
+          "enabled": false,
+          "meanCpuMs": null,
+          "meanGpuMs": null
+        },
+        {
+          "name": "upscale",
+          "enabled": true,
+          "meanCpuMs": 0.03166666689018408,
+          "meanGpuMs": 1.124579816666667
+        }
+      ],
+      "samples": 120,
+      "gpuSamples": 120,
+      "meanCpuMs": 0.8391666664431493,
+      "meanGpuMs": 6.6957051166666695
+    }
+  ]
+}

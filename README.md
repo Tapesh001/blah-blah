@@ -1,82 +1,81 @@
-# Starwind — A Painted Voyage
+# Cog & Gale
 
-A first playable combined adaptation: a painterly bicycle ride, a gear-and-chain repair puzzle, wind-driven sailing with a first-person winch, and the actual procedural Isle of Morne terrain from Tria Prima.
+A browser game foundation for a bicycle ride, a sea crossing and an island
+journey. **This is the provisional M0 milestone:** chapters and simulation
+services are placeholders awaiting the other owners' implementations.
 
 ## Run
 
-Requires a modern Node.js release and a browser with WebGL 2.
+Use Node.js 22.12+ (CI uses Node 24) and a browser with WebGL 2.
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
-Open the Local URL printed by Vite, normally http://127.0.0.1:5173/.
+Open the local address printed by Vite. Press **E**, or use the onscreen button,
+to traverse title → ride → sail → isle → ending. Ending returns to title.
+**Escape** or the Pause button pauses/resumes. M0 collects WASD movement input,
+but placeholder chapters have no movement simulation yet.
+
+Try `/?chapter=sail&cp=squall&storm=0.8&q=low&seed=7`.
+Supported quality values are low, medium and high. The checkpoint is supplied
+to the chapter context; restoring a saved game is a later milestone.
+
+Open `/sandbox/` for bike, bench, sail, cloth, isle, ocean, sky and terrain
+development pages. Each starts a fresh context and uses the owner's public
+`mount(ctx)` export when available.
+
+## Verify
 
 ```sh
-npm test
+npm run check
+npx playwright install chromium
+npm run e2e
+```
+
+`check` runs strict type checking, ESLint/Prettier, unit tests and production
+build. On Linux install the browser with
+`npx playwright install --with-deps chromium`.
+The browser suite exercises the production build using Chromium software GL.
+
+```sh
 npm run build
 npm run preview
 ```
 
-Production output is `dist/`, suitable for a static web host. Serve through HTTP; do not open `index.html` directly as a file.
+The multi-page output is `dist/`. Existing static hosting configuration is
+retained, but deployment is not part of this provisional milestone.
 
-## Play the journey
+## Integrate
 
-1. Pedal north along the illuminated road and collect six golden stars.
-2. The chain fails after about 35 metres. Choose the **24T gear**, click or drag it onto the glowing axle, fit the master link, then turn the tensioner or move its slider to **55–72%**. Test the drivetrain to resume.
-3. Collect the remaining stars and deliver them at the steeple with **E** or the interaction button.
-4. Follow the road southeast to the harbour and board the sailboat.
-5. Navigate to the three beacons using the chart. Hold **Space** within 53 metres of each to kindle it. The on-screen kindle button also accepts repeated taps.
-6. Moor at Morne after lighting all three beacons. Follow the lanterns inland to the ruined chapel and the Athanor to finish.
+- `src/contracts/index.ts`: explicitly provisional interfaces.
+- `src/core/`: scheduler, RNG, events, math, keyboard adapter and service stubs.
+- `src/game/services.ts`: service replacement factory.
+- `src/game/chapters.ts`: chapter table and asynchronous lifecycle.
+- `src/game/runtime.ts`: composition, loop wiring and debug API.
+- `src/game/sandbox.ts`: composition entry for `createSandbox(options)`.
+- `src/ui/`: lightweight foundation screen.
+- `docs/handoff/CONTRACTS.md`: data layout, lifecycle and integration notes.
+- `docs/handoff/STATUS.md`: milestone evidence and outstanding work.
+- `docs/agents/shobhit.md`: supplied task brief.
 
-Sailing practice starts directly at sea and leaves campaign saves untouched. Checkpoints stay in your browser. Replacing a journey requires confirmation. Pause includes a recovery action to return to a safe place.
+`window.__cg` exposes `ready`, `chapter()`, `goTo(id)`, `setStorm(value|null)`,
+`setTimeScale(value)`, `setRouteProgress(value)`, `checkpoint(id)`,
+`stats()`, completion `events`, and `dispose()`.
 
-## Controls
+## Provenance and remaining work
 
-| Input | Bicycle / shore | Sailboat |
-| --- | --- | --- |
-| W / up | Pedal / walk forward | Raise sail |
-| S / down | Brake / walk backward | Lower sail |
-| A / D | Steer / turn | Rudder |
-| Space | Jump | Hold to kindle |
-| E | Repair, deliver, board | Haul sheet; dock when prompted |
-| Q | — | Ease sheet |
-| R / Trim the sail button | — | Open first-person winch |
-| V / camera button | First / third person | First / third person |
-| M / chart button | Chart | Chart |
-| Escape | Pause / close panel | Pause / close panel |
-| Drag the scene | Look around | Look around |
+The supplied brief referenced shared contracts and a master plan that were
+absent from the repository. The user approved a provisional foundation;
+its APIs, island positions, ocean formula and environment defaults require
+reconciliation with the team before real-system integration.
 
-Clockwise rotation tightens the chain tensioner or hauls the sail's sheet. Sliders provide keyboard and touch alternatives. Wind trim advice appears on the HUD. Sailing into the wind produces little thrust; turn across it to regain speed.
+M1 input/camera/wind/terrain/physics/saves, M2 UI/audio and M3/M4 integration,
+soak/performance checks and release remain outstanding. No real gameplay,
+full-run acceptance, CPU budget or ten-minute browser soak is claimed.
 
-## Source
-
-- `src/main.js`: input, progression, workbench, winch, chart, checkpoint UI and game loop.
-- `src/world.js`: Three.js scene, procedural village, terrain, bicycle, boat, sail, water shader and cameras.
-- `src/game.js`: state transitions, save validation and sailing model.
-- `src/audio.js`: opt-in synthesised sound and ambient notes.
-- `src/vendor/tria-prima/`: four MIT-licensed source files providing Morne's actual terrain and regions, sampled at 60% scale. Original peak, caldera, Mere and shoreline are retained; materials, landmark models and campaign are adapted.
-- `tests/game.test.js`: campaign prerequisites, repair validation, wind/trim, saves, practice isolation and terrain checks.
-
-The interface uses Google Fonts when available and local fallbacks otherwise. Gameplay needs no account, multiplayer backend or paid API.
-
-## Reference provenance
-
-- [Starry Nightrider](https://starrynightrider.com/): bicycle controls, follow camera, carried light and steeple delivery. Shipped scripts were inspected with REA but are not copied into this game.
-- [The Clockmaker’s Heart](https://claude.ai/artifact/6MjtQjf4ee1ZZjEpafaEpa): gear tray, axle placement and meshing concept. The repair sequence is new.
-- [Tidewright](https://claude.ai/artifact/JTgyEMn7sn1q2riWrMb7D4): wind-driven sailing and beacon restoration. Rope winch and first-person view are additions.
-- [Tria Prima](https://github.com/winchxyz/tria-prima): terrain copied from revision `acce14089aeee01f3225a09a3a8a9532612359fb`, copyright 2026 winchxyz. MIT notice: `public/licenses/TRIA-PRIMA-MIT.txt`.
-- Three.js licence: `public/licenses/THREE-MIT.txt`.
-
-This combines the requested mechanics into a new two-chapter game. It does not reproduce the full upstream multiplayer, flight/trick systems, seven-organ puzzle campaign, six-beacon sailing campaign or alchemy/combat systems. Procedural artwork is an adaptation, not an exact visual replica.
-
-## Verification
-
-- Five automated tests passed, including a complete state-transition campaign and upstream terrain samples.
-- Vite production build passed; local server returned HTTP 200.
-- Brave visual checks confirmed the 3D village renders, the wrong repair gear is rejected, excessive chain tension is rejected, and a 24T idler with 63% tension completes repair and returns to riding.
-- An Escape pause issue was found during browser testing and fixed by suppressing the key's default dialog dismissal. The fix still needs a browser recheck. Sailing, the ending and a full campaign playthrough remain unverified in-browser.
-- Full REA evidence and research are outside this deployable project under `../references/`. The 111 MB Evidence JSON is excluded from deployment.
-
-The original build plan and compact reference reports are included in `docs/`.
+The previous prototype is archived under `legacy/v0/`. Its copied upstream
+terrain and unused helpers are removed from the active tree; no vendor
+terrain is imported by this version. The original archive can be reconstructed
+from Git revision `243495d`. Third-party notices remain in `public/licenses/`.

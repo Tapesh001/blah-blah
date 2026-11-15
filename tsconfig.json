@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@contracts": ["./src/contracts/index.ts"],
+      "@contracts/*": ["./src/contracts/*"],
+      "@core": ["./src/core/index.ts"],
+      "@core/*": ["./src/core/*"],
+      "@gfx": ["./src/gfx/index.ts"],
+      "@gfx/*": ["./src/gfx/*"],
+      "@land": ["./src/land/index.ts"],
+      "@land/*": ["./src/land/*"],
+      "@mech": ["./src/mech/index.ts"],
+      "@mech/*": ["./src/mech/*"],
+      "@sea": ["./src/sea/index.ts"],
+      "@sea/*": ["./src/sea/*"],
+      "@sim": ["./src/sim/index.ts"],
+      "@sim/*": ["./src/sim/*"],
+      "@isle": ["./src/isle/index.ts"],
+      "@isle/*": ["./src/isle/*"],
+      "@world": ["./src/world/index.ts"],
+      "@world/*": ["./src/world/*"],
+      "@ui": ["./src/ui/index.ts"],
+      "@ui/*": ["./src/ui/*"],
+      "@audio": ["./src/audio/index.ts"],
+      "@audio/*": ["./src/audio/*"]
+    }
+  },
+  "include": ["src", "tests", "e2e", "*.ts"]
+}

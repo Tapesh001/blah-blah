@@ -1,55 +1,17 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#071b2a" />
-  <meta name="description" content="Ride beneath a painted sky. Mend a little machine. Follow the wind to the last light." />
-  <title>Starwind — A Painted Voyage</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230c2638'/%3E%3Cpath d='m32 8 6 18 18 6-18 6-6 18-6-18-18-6 18-6' fill='%23e4c77f'/%3E%3C/svg%3E" />
-</head>
-<body>
-  <canvas id="world" aria-label="Starwind 3D world"></canvas>
-  <div class="vignette" aria-hidden="true"></div><div class="grain" aria-hidden="true"></div>
-  <header id="topbar">
-    <a class="wordmark" href="#" id="home-link" aria-label="Pause Starwind"><span class="brand-star">✧</span> STARWIND <span class="edition">A PAINTED VOYAGE</span></a>
-    <div class="top-actions"><button id="map-btn" class="icon-button" title="Sea chart (M)" aria-label="Open chart">⌑</button><button id="sound-btn" class="icon-button" title="Sound" aria-label="Enable sound">♫<span class="sound-off">×</span></button><button id="pause-btn" class="icon-button" title="Pause (Escape)" aria-label="Pause">Ⅱ</button></div>
-  </header>
-  <main id="intro" class="screen intro">
-    <div class="intro-copy"><div class="eyebrow"><span></span> A LITTLE LIGHT. A LONG WAY HOME.</div>
-      <h1>Follow the<br/><em>starwind.</em></h1>
-      <p>Through a sleeping village. Across a restless sea.<br/>A bicycle, a boat, and the light you carry.</p>
-      <button id="begin-btn" class="primary">Begin the journey <span>↗</span></button>
-      <button id="continue-btn" class="text-button" hidden>Continue your journey →</button>
-      <div class="chapter-preview"><span><b>01</b> THE NIGHT RIDE</span><i>—</i><span><b>02</b> THE OPEN SEA</span></div>
-    </div>
-    <div class="intro-note"><span class="note-star">✦</span><span>Some things are worth<br/>finding your own way to.</span></div>
-    <footer class="intro-footer"><span>A PLAYABLE STUDY IN LIGHT & MOTION</span><div><button id="practice-btn" class="text-button">Sailing practice ↗</button><button id="credits-btn" class="text-button">Field notes & credits</button></div></footer>
-  </main>
-  <section id="hud" hidden aria-label="Game status">
-    <div class="chapter-label"><span id="chapter-no">CHAPTER 01</span><h2 id="chapter-name">The night ride</h2><p id="location-label">SAINT-RÉMY · AFTER HOURS</p></div>
-    <div class="compass"><span>W</span><div id="compass-track">······· N ······· E ······· S ······· W ·······</div><span>E</span><i>◆</i><strong id="waypoint">THE STEEPLE · 80 M</strong></div>
-    <div class="objective"><span class="objective-number" id="objective-icon">✦</span><div><span class="eyebrow" id="objective-tag">CARRY THE LIGHT</span><p id="objective-text">Find six fallen stars and bring them to the steeple.</p></div></div>
-    <div id="toast" role="status" aria-live="polite"></div>
-    <div id="interaction" hidden><span id="interaction-text"></span><button id="interact-btn" class="primary small">Interact <kbd>E</kbd></button></div>
-    <div class="dashboard"><div class="dash-stat"><span id="stat-symbol">✧</span><strong id="stars-count">0 <small>/ 6</small></strong><label id="stat-label">LIGHTS FOUND</label></div><div class="dash-divider"></div><div class="dash-stat"><strong id="speed">0.0</strong><label id="speed-label">KM / H</label></div><div class="dash-divider"></div><div class="dash-stat chain-stat"><span id="condition-icon">⛓</span><div class="meter"><i id="condition-fill"></i></div><label id="condition-label">CHAIN CONDITION</label></div></div>
-    <div id="wind-panel" hidden><div class="wind-rose"><span id="wind-arrow">↑</span><i>N</i></div><div><span class="eyebrow">APPARENT WIND</span><strong id="wind-speed">12 knots · NW</strong><p id="wind-advice">Ease the sheet. Let the sail breathe.</p></div><div class="trim-readout"><span>SHEET</span><strong id="trim-value">35%</strong></div></div>
-    <button id="winch-btn" class="view-toggle winch-toggle" hidden>↻ Trim the sail <kbd>R</kbd></button>
-    <button id="view-btn" class="view-toggle">◉ <span>Chase camera</span> <kbd>V</kbd></button>
-    <div class="bottom-controls" id="ride-controls"><span><kbd>W</kbd> pedal</span><span><kbd>A</kbd><kbd>D</kbd> steer</span><span><kbd>S</kbd> brake</span><span><kbd>SPACE</kbd> jump</span><span><kbd>M</kbd> chart</span></div>
-    <div class="bottom-controls" id="sail-controls" hidden><span><kbd>A</kbd><kbd>D</kbd> rudder</span><span><kbd>Q</kbd><kbd>E</kbd> sheet</span><span><kbd>R</kbd> winch</span><span><kbd>SPACE</kbd> kindle</span></div>
-    <div class="touch-controls"><button data-key="a" aria-label="Steer left">←</button><button data-key="w" aria-label="Pedal or raise sail">↑</button><button data-key="s" aria-label="Brake or lower sail">↓</button><button data-key="d" aria-label="Steer right">→</button><button data-key=" " aria-label="Jump or kindle">✦</button></div>
-  </section>
-  <dialog id="repair-dialog" class="workbench"><button class="close-button" id="close-repair" aria-label="Close repair">×</button><div class="eyebrow">ROADSIDE WORKSHOP · NO. 01</div><h2>A break in the chain.</h2><p class="modal-description" id="repair-instruction">The idler has slipped its axle. Choose the 24-tooth gear, then place it on the glowing spindle.</p>
-    <div class="repair-layout"><div class="mechanism"><svg id="gear-board" viewBox="0 0 640 340" role="img" aria-label="Drivetrain with crank gear, missing idler axle, rear sprocket and broken chain"><defs><pattern id="holes" x="0" y="0" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="13" cy="13" r="2" fill="#79929a" opacity=".2"/></pattern><radialGradient id="brass"><stop stop-color="#f0d695"/><stop offset=".58" stop-color="#ab7b36"/><stop offset="1" stop-color="#f1d195"/></radialGradient></defs><rect x="5" y="5" width="630" height="330" rx="24" class="plate"/><rect x="22" y="22" width="596" height="296" rx="12" fill="url(#holes)"/><path id="chain-path" d="M120 110 L500 126 A45 45 0 0 1 500 216 L320 259 L120 258 A74 74 0 0 1 120 110" fill="none" stroke="#8a7850" stroke-width="9" stroke-dasharray="8 6"/><g id="gear-crank"></g><g id="gear-rear"></g><g id="gear-idler"></g><circle cx="320" cy="220" r="43" class="axle-glow"/><circle cx="320" cy="220" r="7" fill="#d4dfe0"/><text x="120" y="305">CRANK · 48T</text><text x="320" y="305">IDLER · ?</text><text x="500" y="305">DRIVE · 24T</text></svg><button id="axle-btn" aria-label="Place selected gear on idler axle">+</button><span class="plate-note">NIGHTRIDER CYCLE WORKS · HAND ASSEMBLED</span></div><aside class="repair-steps"><div id="step-gear" class="repair-step active"><b>01</b><span>Seat the idler<small>Match the 24T gear to the axle.</small></span></div><div id="step-chain" class="repair-step"><b>02</b><span>Close the chain<small>Fit the missing master link.</small></span></div><div id="step-tension" class="repair-step"><b>03</b><span>Find the tension<small>Turn clockwise into the gold band.</small></span></div></aside></div>
-    <div class="workbench-tools"><div class="gear-tray" role="group" aria-label="Spare gear tray"><button class="gear-choice" data-teeth="16" draggable="true"><span>⚙</span>16T</button><button class="gear-choice" data-teeth="24" draggable="true"><span>⚙</span>24T</button><button class="gear-choice" data-teeth="32" draggable="true"><span>⚙</span>32T</button></div><button id="link-btn" class="secondary" disabled>⌁ Fit master link</button><div class="tension-tools"><button id="tension-dial" class="rotary" disabled aria-label="Turn chain tensioner clockwise">↻</button><div><label for="chain-tension">Chain tension <strong id="tension-number">20%</strong></label><input id="chain-tension" type="range" min="0" max="100" value="20" disabled/><span class="tool-hint">Drag the dial · or use the slider</span></div></div><button id="test-drive" class="primary small" disabled>Test drivetrain ↗</button></div><p id="repair-feedback" role="status">A little patience. A little precision.</p>
-  </dialog>
-  <dialog id="winch-dialog" class="winch-modal"><button class="close-button" id="close-winch" aria-label="Leave winch">×</button><div class="eyebrow">ON DECK · MAIN SHEET</div><h2>Take the wind in hand.</h2><p>Turn the brass winch to haul the rope. Ease it back to let the sail out.</p><div class="winch-scene"><div class="rope-line"></div><button id="sail-winch" aria-label="Turn sail winch clockwise"><span class="winch-handle"></span><i>✧</i></button><div class="winch-label">HAUL ↻ <span>↺ EASE</span></div></div><div class="sail-trim-control"><label for="sail-trim">Sheet tension <strong id="winch-number">35%</strong></label><input type="range" id="sail-trim" min="5" max="95" value="35"/><div><span>LOOSE · SAIL OUT</span><span>TIGHT · SAIL IN</span></div></div><p id="winch-advice" role="status"></p><button id="return-helm" class="primary small">Return to the helm ↗</button></dialog>
-  <dialog id="map-dialog" class="chart-modal"><button class="close-button" id="close-map" aria-label="Close chart">×</button><div class="eyebrow">THE NAVIGATOR'S CHART</div><h2>A small corner of the infinite.</h2><canvas id="chart" width="900" height="530" aria-label="Chart showing your position, village, beacons and Isle of Morne"></canvas><div class="chart-legend"><span>◇ Your position</span><span>✦ A light to kindle</span><span>⌂ Safe harbour</span></div></dialog>
-  <dialog id="pause-dialog" class="simple-modal"><div class="eyebrow">TAKE A BREATH</div><h2>The night can wait.</h2><p>W / S to pedal and brake. A / D to steer. Space to jump or kindle. V changes view. M opens the chart. At sea, Q / E adjusts the sheet and R opens the winch.</p><button id="resume-btn" class="primary">Keep going ↗</button><button id="harbour-reset" class="secondary">Return to last safe place</button><button id="menu-btn" class="text-button">Back to title</button></dialog>
-  <dialog id="credits-dialog" class="simple-modal"><button class="close-button" id="close-credits" aria-label="Close credits">×</button><div class="eyebrow">FIELD NOTES</div><h2>Four sparks. One voyage.</h2><p>An original combined adaptation, with thanks to the worlds that inspired it.</p><ul class="credits-list"><li><a href="https://starrynightrider.com/" target="_blank" rel="noreferrer">Starry Nightrider ↗</a><span>The painted night, cycling and carrying light.</span></li><li><a href="https://claude.ai/artifact/6MjtQjf4ee1ZZjEpafaEpa" target="_blank" rel="noreferrer">The Clockmaker's Heart ↗</a><span>Gear placement and mechanical problem-solving.</span></li><li><a href="https://claude.ai/artifact/JTgyEMn7sn1q2riWrMb7D4" target="_blank" rel="noreferrer">Tidewright ↗</a><span>Wind, sailing and rekindling island beacons.</span></li><li><a href="https://github.com/winchxyz/tria-prima" target="_blank" rel="noreferrer">Tria Prima · winchxyz ↗</a><span>Actual Isle of Morne terrain, adapted under <a href="/licenses/TRIA-PRIMA-MIT.txt" target="_blank">MIT licence</a>.</span></li></ul><p class="fineprint">Built with Three.js. Original procedural artwork and sound. No account required; checkpoints stay in this browser.</p></dialog>
-  <dialog id="ending-dialog" class="simple-modal ending"><div class="end-star">✦</div><div class="eyebrow">THE LONG WAY HOME</div><h2>And the night<br/><em>remembered its light.</em></h2><p>Six stars carried. One small machine mended.<br/>Three beacons burning across the sea.</p><button id="explore-btn" class="primary">Stay a little longer ↗</button><button id="replay-btn" class="text-button">Begin another journey</button></dialog>
-  <div id="loading"><span>✦</span><p>Stirring the sea. Hanging the stars.</p></div>
-  <script type="module" src="/src/main.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#223a47" />
+    <meta
+      name="description"
+      content="Cog & Gale — a journey through wind and water."
+    />
+    <title>Cog & Gale</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>
