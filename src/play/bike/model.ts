@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { chainPath, pitchRadius } from '../../mech/sim/chain';
 import { gearGeometry } from '../bench/gear-mesh';
+import { surfaceMaps } from '../bench/surfaces';
 import { COGS, type RideState } from './ride';
 
 /** Every component is modelled locally; +Y up, front wheel towards local -Z. */
@@ -9,38 +10,58 @@ export function buildBikeModel() {
     leanRoot = new THREE.Group();
   root.name = 'ride-bicycle';
   root.add(leanRoot);
+  const brushed = surfaceMaps('metal'),
+    hide = surfaceMaps('leather'),
+    weave = surfaceMaps('cloth');
   const paint = new THREE.MeshPhysicalMaterial({
     color: 0x166d73,
     metalness: 0.58,
     roughness: 0.27,
     clearcoat: 0.8,
     clearcoatRoughness: 0.2,
+    normalMap: brushed.parameters.normalMap,
+    normalScale: new THREE.Vector2(0.08, 0.08),
   });
-  const brass = new THREE.MeshStandardMaterial({
+  const brass = new THREE.MeshPhysicalMaterial({
     color: 0xd5ac63,
     metalness: 0.85,
     roughness: 0.28,
+    ...brushed.parameters,
+    normalScale: new THREE.Vector2(0.3, 0.3),
+    anisotropy: 0.6,
+    clearcoat: 0.25,
   });
-  const steel = new THREE.MeshStandardMaterial({
+  const steel = new THREE.MeshPhysicalMaterial({
     color: 0xb5c3c9,
     metalness: 0.9,
     roughness: 0.26,
+    ...brushed.parameters,
+    normalScale: new THREE.Vector2(0.25, 0.25),
+    anisotropy: 0.72,
   });
   const rubber = new THREE.MeshStandardMaterial({
     color: 0x171e21,
     roughness: 0.88,
+    normalMap: hide.parameters.normalMap,
+    normalScale: new THREE.Vector2(0.6, 0.6),
   });
   const leather = new THREE.MeshStandardMaterial({
     color: 0x51382a,
     roughness: 0.65,
+    ...hide.parameters,
+    normalScale: new THREE.Vector2(0.55, 0.55),
   });
   const jacket = new THREE.MeshStandardMaterial({
     color: 0xc57e3e,
     roughness: 0.76,
+    ...weave.parameters,
+    normalScale: new THREE.Vector2(0.4, 0.4),
   });
   const pants = new THREE.MeshStandardMaterial({
     color: 0x263a43,
     roughness: 0.85,
+    ...weave.parameters,
+    normalScale: new THREE.Vector2(0.35, 0.35),
   });
   const skin = new THREE.MeshStandardMaterial({
     color: 0xbe9273,
@@ -117,6 +138,16 @@ export function buildBikeModel() {
   tube(seat, bottom, 0.026);
   tube(seat, head, 0.024);
   tube(bottom, head, 0.032);
+  for (const p of [seat, head, bottom])
+    for (let i = 0; i < 3; i++) {
+      const bead = mesh(
+        new THREE.TorusGeometry(0.029 + i * 0.001, 0.0015, 5, 24),
+        steel,
+      );
+      bead.position.copy(vector(p));
+      bead.position.y += (i - 1) * 0.004;
+      bead.rotation.x = Math.PI / 2;
+    }
   for (const side of [-1, 1]) {
     tube([side * 0.06, 0.34, 0.54], [side * 0.04, 0.33, 0.03], 0.014);
     tube([side * 0.06, 0.34, 0.54], seat, 0.012);
@@ -206,7 +237,7 @@ export function buildBikeModel() {
       [0.288, 0.009, steel],
       [0.329, 0.003, brass],
     ] as const) {
-      const ring = mesh(new THREE.TorusGeometry(r, t, 8, 48), mat, group);
+      const ring = mesh(new THREE.TorusGeometry(r, t, 12, 96), mat, group);
       ring.rotation.y = Math.PI / 2;
     }
     const hub = mesh(
@@ -215,6 +246,69 @@ export function buildBikeModel() {
       group,
     );
     hub.rotation.z = Math.PI / 2;
+    const treadGeo = new THREE.CapsuleGeometry(0.0033, 0.014, 2, 5);
+    geometries.add(treadGeo);
+    const treads = new THREE.InstancedMesh(treadGeo, rubber, 144);
+    treads.name = 'tyre-tread';
+    treads.castShadow = treads.receiveShadow = true;
+    group.add(treads);
+    for (let i = 0; i < 144; i++) {
+      const a = ((i % 72) * Math.PI) / 36,
+        side = i < 72 ? -1 : 1;
+      helper.position.set(
+        side * 0.012,
+        Math.cos(a) * 0.336,
+        Math.sin(a) * 0.336,
+      );
+      helper.quaternion.setFromUnitVectors(
+        up,
+        new THREE.Vector3(side * 0.8, -Math.sin(a) * 0.6, Math.cos(a) * 0.6),
+      );
+      helper.scale.set(1, 1, 1);
+      helper.updateMatrix();
+      treads.setMatrixAt(i, helper.matrix);
+    }
+    const rotorShape = new THREE.Shape();
+    rotorShape.absarc(0, 0, 0.083, 0, Math.PI * 2, false);
+    const centerHole = new THREE.Path();
+    centerHole.absarc(0, 0, 0.023, 0, Math.PI * 2, true);
+    rotorShape.holes.push(centerHole);
+    for (let i = 0; i < 18; i++) {
+      const a = (i * Math.PI) / 9,
+        hole = new THREE.Path();
+      hole.absellipse(
+        Math.cos(a) * 0.062,
+        Math.sin(a) * 0.062,
+        0.01,
+        0.004,
+        0,
+        Math.PI * 2,
+        true,
+        a,
+      );
+      rotorShape.holes.push(hole);
+    }
+    const rotor = mesh(
+      new THREE.ExtrudeGeometry(rotorShape, {
+        depth: 0.002,
+        bevelEnabled: false,
+        curveSegments: 8,
+      }),
+      steel,
+      group,
+    );
+    rotor.rotation.y = Math.PI / 2;
+    rotor.position.x = -0.075;
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI) / 3;
+      const bolt = mesh(
+        new THREE.CylinderGeometry(0.003, 0.003, 0.006, 6),
+        brass,
+        group,
+      );
+      bolt.rotation.z = Math.PI / 2;
+      bolt.position.set(-0.078, Math.cos(a) * 0.032, Math.sin(a) * 0.032);
+    }
     const spokeGeo = new THREE.CylinderGeometry(0.0014, 0.0014, 1, 5);
     geometries.add(spokeGeo);
     const spokes = new THREE.InstancedMesh(spokeGeo, steel, 32);
@@ -246,6 +340,23 @@ export function buildBikeModel() {
   }
   const rearWheel = wheel(leanRoot, vector(rear));
   const frontWheel = wheel(steering, new THREE.Vector3(0, -0.57, -0.16));
+  const rearCaliper = ellipsoid(
+    [-0.08, 0.41, 0.59],
+    [0.018, 0.03, 0.026],
+    paint,
+  );
+  rearCaliper.name = 'rear-disc-caliper';
+  ellipsoid([-0.08, -0.5, -0.11], [0.018, 0.03, 0.026], paint, steering);
+  curve(
+    [
+      [-0.05, 0.91, -0.38],
+      [-0.035, 0.92, 0.1],
+      [-0.05, 0.8, 0.25],
+      [-0.08, 0.41, 0.59],
+    ],
+    0.0025,
+    rubber,
+  );
   // Real tooth counts, including each individual cassette sprocket.
   const crank = new THREE.Group();
   crank.position.copy(vector(bottom));
@@ -298,17 +409,32 @@ export function buildBikeModel() {
   const jockey = mesh(gearGeometry(12, 0.024, 0.008), rubber, derailleur);
   jockey.rotation.y = Math.PI / 2;
   jockey.position.set(0, -0.12, -0.08);
-  const chainGeo = new THREE.CapsuleGeometry(0.0017, 0.008, 2, 4);
+  const chainGeo = new THREE.CapsuleGeometry(0.0017, 0.008, 3, 6);
+  const rollerGeo = new THREE.CylinderGeometry(0.0031, 0.0031, 0.011, 8);
   geometries.add(chainGeo);
-  const chain = new THREE.InstancedMesh(chainGeo, steel, 192);
-  chain.castShadow = chain.receiveShadow = true;
-  chain.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  leanRoot.add(chain);
+  geometries.add(rollerGeo);
+  const chain = new THREE.InstancedMesh(chainGeo, steel, 256);
+  const rollers = new THREE.InstancedMesh(rollerGeo, steel, 128);
+  chain.name = 'chain-link-plates';
+  rollers.name = 'chain-rollers';
+  for (const instances of [chain, rollers]) {
+    instances.castShadow = instances.receiveShadow = true;
+    instances.frustumCulled = false;
+    instances.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    leanRoot.add(instances);
+  }
   let previousGear = -1,
-    chainPoints: THREE.Vector2[] = [];
+    chainCount = 96,
+    chainLength = 1,
+    chainTravel = 0,
+    lastCrank = 0;
+  let chainPoints: THREE.Vector2[] = [],
+    chainDistances: number[] = [];
   const chainAxis = new THREE.Vector3(),
     sampleA = new THREE.Vector3(),
-    sampleB = new THREE.Vector3();
+    sampleB = new THREE.Vector3(),
+    uvA = new THREE.Vector2(),
+    uvB = new THREE.Vector2();
   function rebuildChain(gear: number) {
     const path = chainPath([
       { x: 0.03, y: 0.33, radius: pitchRadius('sprocket', 38) },
@@ -318,8 +444,8 @@ export function buildBikeModel() {
     for (let i = 0; i < 2; i++) {
       const arc = path.arcs[i]!,
         seg = path.segments[i]!;
-      for (let k = 0; k < 40; k++) {
-        const a = arc.start + (arc.sweep * k) / 40;
+      for (let k = 0; k < 64; k++) {
+        const a = arc.start + (arc.sweep * k) / 64;
         points.push(
           new THREE.Vector2(
             arc.x + Math.cos(a) * arc.radius,
@@ -327,17 +453,42 @@ export function buildBikeModel() {
           ),
         );
       }
-      for (let k = 0; k < 80; k++)
+      for (let k = 0; k < 96; k++)
         points.push(
           new THREE.Vector2().lerpVectors(
             new THREE.Vector2(seg.from.x, seg.from.y),
             new THREE.Vector2(seg.to.x, seg.to.y),
-            k / 80,
+            k / 96,
           ),
         );
     }
     chainPoints = points;
+    chainDistances = [0];
+    chainLength = 0;
+    for (let i = 0; i < points.length; i++) {
+      chainLength += points[i]!.distanceTo(points[(i + 1) % points.length]!);
+      chainDistances.push(chainLength);
+    }
+    chainCount = Math.min(128, Math.round(chainLength / 0.0127));
+    chain.count = chainCount * 2;
+    rollers.count = chainCount;
     previousGear = gear;
+  }
+  function sampleChain(fraction: number, out: THREE.Vector2) {
+    const distance = (((fraction % 1) + 1) % 1) * chainLength;
+    let lo = 0,
+      hi = chainPoints.length;
+    while (lo + 1 < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (chainDistances[mid]! <= distance) lo = mid;
+      else hi = mid;
+    }
+    const span = chainDistances[lo + 1]! - chainDistances[lo]!;
+    return out.lerpVectors(
+      chainPoints[lo]!,
+      chainPoints[(lo + 1) % chainPoints.length]!,
+      span > 0 ? (distance - chainDistances[lo]!) / span : 0,
+    );
   }
   const rider = new THREE.Group();
   leanRoot.add(rider);
@@ -365,6 +516,25 @@ export function buildBikeModel() {
   headGroup.position.set(0, 1.56, -0.08);
   rider.add(headGroup);
   ellipsoid([0, 0, 0], [0.1, 0.12, 0.095], skin, headGroup);
+  ellipsoid([0, -0.018, -0.098], [0.019, 0.028, 0.022], skin, headGroup);
+  for (const side of [-1, 1]) {
+    ellipsoid(
+      [side * 0.096, -0.015, 0],
+      [0.016, 0.028, 0.018],
+      skin,
+      headGroup,
+    );
+    curve(
+      [
+        [side * 0.085, 0.02, -0.045],
+        [side * 0.06, -0.1, -0.025],
+        [0, -0.113, -0.05],
+      ],
+      0.004,
+      leather,
+      headGroup,
+    );
+  }
   const helmet = mesh(
     new THREE.SphereGeometry(0.116, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
     paint,
@@ -417,23 +587,32 @@ export function buildBikeModel() {
   function update(state: RideState, firstPerson: number) {
     root.position.set(state.x, state.y, state.z);
     root.rotation.y = -state.heading;
-    leanRoot.rotation.set(state.pitch, 0, state.lean, 'YXZ');
+    leanRoot.rotation.set(state.pitch, 0, -state.lean, 'YXZ');
     steering.rotation.y = -state.steer;
     rearWheel.rotation.x = frontWheel.rotation.x = -state.wheelAngle;
     crank.rotation.x = -state.crankAngle;
     derailleur.position.x = 0.095 + state.gear * 0.006;
     if (previousGear !== state.gear) rebuildChain(state.gear);
-    for (let i = 0; i < 96; i++) {
-      const index =
-        ((i / 96 + (state.crankAngle / (Math.PI * 2)) * 0.26) % 1) *
-        chainPoints.length;
-      const a = chainPoints[Math.floor(index)]!,
-        b = chainPoints[(Math.floor(index) + 1) % chainPoints.length]!;
-      sampleA.set(0.105, a.y, a.x);
-      sampleB.set(0.105, b.y, b.x);
+    const crankDelta = Math.atan2(
+      Math.sin(state.crankAngle - lastCrank),
+      Math.cos(state.crankAngle - lastCrank),
+    );
+    if (!state.broken) chainTravel += crankDelta * pitchRadius('sprocket', 38);
+    lastCrank = state.crankAngle;
+    const chainX = (z: number) =>
+      0.105 +
+      (0.095 + state.gear * 0.006 - 0.105) *
+        THREE.MathUtils.clamp((z - 0.03) / 0.51, 0, 1);
+    for (let i = 0; i < chainCount; i++) {
+      const fraction = i / chainCount + chainTravel / chainLength;
+      sampleChain(fraction, uvA);
+      sampleChain(fraction + 0.004 / chainLength, uvB);
+      sampleA.set(chainX(uvA.x), uvA.y, uvA.x);
+      sampleB.set(chainX(uvB.x), uvB.y, uvB.x);
       if (state.broken) {
-        sampleA.y -= 0.1 + Math.sin((i / 95) * Math.PI) * 0.25;
-        sampleB.y -= 0.1 + Math.sin((i / 95) * Math.PI) * 0.25;
+        const drop = 0.08 + Math.sin((i / (chainCount - 1)) * Math.PI) * 0.23;
+        sampleA.y -= drop;
+        sampleB.y -= drop;
       }
       helper.position.copy(sampleA);
       helper.quaternion.setFromUnitVectors(
@@ -442,12 +621,17 @@ export function buildBikeModel() {
       );
       helper.scale.set(1, 1, 1);
       for (let side = 0; side < 2; side++) {
-        helper.position.x = 0.102 + side * 0.006;
+        helper.position.x = sampleA.x + (side === 0 ? -0.004 : 0.004);
         helper.updateMatrix();
         chain.setMatrixAt(i * 2 + side, helper.matrix);
       }
+      helper.position.copy(sampleA);
+      helper.rotation.set(0, 0, Math.PI / 2);
+      helper.updateMatrix();
+      rollers.setMatrixAt(i, helper.matrix);
     }
     chain.instanceMatrix.needsUpdate = true;
+    rollers.instanceMatrix.needsUpdate = true;
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? -1 : 1;
       hip.set(side * 0.105, 1.02, 0.22);
@@ -491,6 +675,9 @@ export function buildBikeModel() {
     root.removeFromParent();
     geometries.forEach((g) => g.dispose());
     materials.forEach((m) => m.dispose());
+    brushed.dispose();
+    hide.dispose();
+    weave.dispose();
   }
   return { root, eye, update, dispose };
 }

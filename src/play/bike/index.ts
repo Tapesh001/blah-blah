@@ -85,6 +85,7 @@ export function createBikeMode(): BikeMode {
     update(dt, input, world, hud) {
       if (!state || !model || completed || !Number.isFinite(dt) || dt <= 0)
         return;
+      hud.objective('Ride to the harbour');
       const step = Math.min(dt, 1 / 30);
       if (input.pressed('KeyV')) firstPerson = !firstPerson;
       lookYaw = MathUtils.clamp(lookYaw + input.lookX, -0.9, 0.9);
@@ -188,7 +189,7 @@ export function createBikeMode(): BikeMode {
         Math.hypot(
           state.x - world.places.harbour.x,
           state.z - world.places.harbour.z,
-        ) < 12;
+        ) <= 12;
       if (completed) hud.prompt('The harbour — ready to sail');
     },
     repaired() {
