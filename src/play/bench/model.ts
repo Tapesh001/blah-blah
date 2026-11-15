@@ -1,29 +1,43 @@
 import * as THREE from 'three';
 import { gearGeometry } from './gear-mesh';
+import { surfaceMaps } from './surfaces';
 import { radiusOf, type BenchDef, type BoardResult } from './rules';
 
 export const GEAR_Y = 0.962;
 export function buildBenchModel(def: BenchDef) {
   const root = new THREE.Group();
   root.name = `${def.kind}-repair-bench`;
-  const brass = new THREE.MeshStandardMaterial({
+  const brushed = surfaceMaps('metal'),
+    grain = surfaceMaps('wood');
+  const brass = new THREE.MeshPhysicalMaterial({
     color: 0xc49a50,
     metalness: 0.88,
     roughness: 0.29,
+    ...brushed.parameters,
+    normalScale: new THREE.Vector2(0.35, 0.35),
+    anisotropy: 0.65,
+    clearcoat: 0.25,
   });
-  const steel = new THREE.MeshStandardMaterial({
+  const steel = new THREE.MeshPhysicalMaterial({
     color: 0x9aaeb9,
     metalness: 0.92,
     roughness: 0.3,
+    ...brushed.parameters,
+    normalScale: new THREE.Vector2(0.4, 0.4),
+    anisotropy: 0.8,
   });
   const dark = new THREE.MeshStandardMaterial({
     color: 0x18262c,
     metalness: 0.5,
     roughness: 0.48,
   });
-  const wood = new THREE.MeshStandardMaterial({
+  const wood = new THREE.MeshPhysicalMaterial({
     color: 0x593b29,
     roughness: 0.75,
+    ...grain.parameters,
+    normalScale: new THREE.Vector2(0.45, 0.45),
+    clearcoat: 0.25,
+    clearcoatRoughness: 0.45,
   });
   const trim = new THREE.MeshStandardMaterial({
     color: 0x806244,
@@ -242,6 +256,23 @@ export function buildBenchModel(def: BenchDef) {
       brass,
       group,
     );
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI) / 3,
+        r = radiusOf(teeth) * 0.31;
+      const fastener = mesh(
+        new THREE.CylinderGeometry(0.0035, 0.0035, 0.004, 6),
+        steel,
+        group,
+      );
+      fastener.position.set(Math.cos(a) * r, 0.022, Math.sin(a) * r);
+    }
+    const wearRing = mesh(
+      new THREE.TorusGeometry(radiusOf(teeth) * 0.78, 0.0008, 5, teeth * 3),
+      trim,
+      group,
+    );
+    wearRing.rotation.x = Math.PI / 2;
+    wearRing.position.y = 0.02;
     const bore = mesh(
       new THREE.CylinderGeometry(0.008, 0.008, 0.047, 12),
       dark,
@@ -331,6 +362,31 @@ export function buildBenchModel(def: BenchDef) {
   lamp.shadow.mapSize.set(512, 512);
   lamp.shadow.bias = -0.0002;
   root.add(lamp, lamp.target);
+  const fill = new THREE.PointLight(0xadcfff, 1.5, 3, 2);
+  fill.position.set(0.8, 1.5, 0.3);
+  root.add(fill);
+  const rim = new THREE.SpotLight(0xc4e0ff, 3, 4, 0.7, 0.8, 2);
+  rim.position.set(0.5, 1.8, -0.9);
+  rim.target.position.set(0.1, 0.95, 0);
+  root.add(rim, rim.target);
+  // Small shop tools and oil-can hardware give scale without covering the train.
+  tube([-0.25, 0.947, -0.39], [-0.08, 0.947, -0.37], 0.008, steel);
+  for (const x of [-0.26, -0.07]) {
+    const wrenchHead = mesh(
+      new THREE.TorusGeometry(0.019, 0.005, 7, 20, Math.PI * 1.7),
+      steel,
+    );
+    wrenchHead.rotation.x = Math.PI / 2;
+    wrenchHead.position.set(x, 0.947, x < -0.1 ? -0.39 : -0.37);
+  }
+  const oilCan = mesh(new THREE.CylinderGeometry(0.027, 0.034, 0.1, 24), brass);
+  oilCan.position.set(0.61, 0.995, 0.04);
+  const oilCap = mesh(
+    new THREE.CylinderGeometry(0.014, 0.018, 0.025, 16),
+    dark,
+  );
+  oilCap.position.set(0.61, 1.057, 0.04);
+  tube([0.61, 1.07, 0.04], [0.57, 1.105, 0.025], 0.003, steel);
   const dial = new THREE.Group();
   dial.position.set(0.47, 0.965, -0.13);
   root.add(dial);
@@ -412,8 +468,11 @@ export function buildBenchModel(def: BenchDef) {
     geometries.forEach((g) => g.dispose());
     materials.forEach((m) => m.dispose());
     textures.forEach((t) => t.dispose());
-    lamp.shadow.map?.dispose();
+    brushed.dispose();
+    grain.dispose();
     lamp.dispose();
+    fill.dispose();
+    rim.dispose();
   }
   return { root, parts, picks, arrange, turn, preview, dispose };
 }
