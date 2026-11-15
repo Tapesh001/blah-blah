@@ -767,6 +767,7 @@ void main(){
       for (let i = 0; i < noAO.length; i++) noAO[i]!.visible = aoVisibility[i]!;
     }
   };
+  ao.enabled = quality === 'ultra';
   composer.addPass(ao);
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.45, 1.3);
   composer.addPass(bloom);
@@ -829,7 +830,7 @@ void main(){
       quality = next;
       world.quality = next;
       try {
-        localStorage.setItem('cg-graphics', next);
+        localStorage.setItem('cg-graphics2', next);
       } catch {
         /* Storage can be disabled. */
       }
@@ -856,6 +857,7 @@ void main(){
       composer.renderTarget1.dispose();
       composer.renderTarget2.dispose();
       ao.updateGtaoMaterial({ samples: next === 'ultra' ? 16 : 8 });
+      ao.enabled = next === 'ultra';
       world.resize();
     },
     graphicsStats() {
@@ -1075,18 +1077,25 @@ void main(){
       gpuTimer.beginFrame(renderFrame++);
       gpuTimer.begin('graphics');
       try {
+        renderer.shadowMap.autoUpdate = false;
+        renderer.shadowMap.needsUpdate =
+          quality === 'ultra' || renderFrame % 2 === 0;
         scene.updateMatrixWorld();
         camera.updateMatrixWorld();
         ocean.visible = false;
         try {
-          reflection.onBeforeRender(
-            renderer,
-            scene,
-            camera,
-            reflection.geometry,
-            reflectionMaterial,
-            null!,
-          );
+          if (quality === 'ultra' || renderFrame % 3 === 0) {
+            grass.visible = false;
+            reflection.onBeforeRender(
+              renderer,
+              scene,
+              camera,
+              reflection.geometry,
+              reflectionMaterial,
+              null!,
+            );
+            grass.visible = true;
+          }
           reflectionMatrix
             .copy(
               reflectionMaterial.uniforms['textureMatrix']!

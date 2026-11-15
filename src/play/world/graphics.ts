@@ -4,13 +4,13 @@ export type GraphicsQuality = 'high' | 'ultra';
 export const GRAPHICS = {
   high: {
     scale: 1,
-    maxRatio: 1.5,
-    shadow: 2048,
-    ocean: 384,
-    grass: 140000,
-    cloudSteps: 12,
-    reflection: 1024,
-    samples: 2,
+    maxRatio: 1,
+    shadow: 1536,
+    ocean: 200,
+    grass: 80000,
+    cloudSteps: 8,
+    reflection: 384,
+    samples: 0,
   },
   ultra: {
     scale: 1.5,
@@ -26,11 +26,14 @@ export const GRAPHICS = {
 
 export function savedGraphics(): GraphicsQuality {
   try {
-    return localStorage.getItem('cg-graphics') === 'high' ? 'high' : 'ultra';
+    return localStorage.getItem('cg-graphics2') === 'ultra' ? 'ultra' : 'high';
   } catch {
-    return 'ultra';
+    return 'high';
   }
 }
+
+/** Dynamic resolution: the main loop lowers this when frames run long. */
+export const dynamic = { scale: 1 };
 
 /** Bound physical pixels as well as dimensions, including 4K and HiDPI screens. */
 export function graphicsRatio(
@@ -41,12 +44,15 @@ export function graphicsRatio(
   maxSize: number,
 ) {
   const settings = GRAPHICS[quality];
-  return Math.min(
-    settings.maxRatio,
-    deviceRatio * settings.scale,
-    maxSize / width,
-    maxSize / height,
-    Math.sqrt(8_000_000 / (width * height)),
+  return (
+    dynamic.scale *
+    Math.min(
+      settings.maxRatio,
+      deviceRatio * settings.scale,
+      maxSize / width,
+      maxSize / height,
+      Math.sqrt(8_000_000 / (width * height)),
+    )
   );
 }
 

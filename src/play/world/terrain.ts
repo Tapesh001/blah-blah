@@ -335,7 +335,7 @@ export function buildTerrainMesh(G: IsleGrid, mat: THREE.Material): THREE.Mesh {
   const m = new THREE.Mesh(geo, mat);
   m.position.set(G.isle.x, 0, G.isle.z);
   m.receiveShadow = true;
-  m.castShadow = true;
+  m.castShadow = false;
   return m;
 }
 
