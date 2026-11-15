@@ -998,7 +998,7 @@ void main(){
       const lit = sunCol.clone().multiplyScalar(sun.intensity * 0.3);
       // ocean
       oceanU.uTime.value = world.time;
-      oceanU.uSea.value = 0.45 + 2.0 * s;
+      oceanU.uSea.value = 0.35 + 1.7 * s * s;
       oceanU.uCam.value.copy(cp);
       oceanU.uSunCol.value.copy(lit).multiplyScalar(3);
       lerpHex(0xc8d8e2, 0x39424c, s, oceanU.uHorizon.value).multiplyScalar(
@@ -1012,7 +1012,7 @@ void main(){
       );
       oceanU.uFog.value.copy(fogC);
       oceanU.uFogD.value = fd;
-      oceanU.uFoam.value = 0.15 + 0.85 * s;
+      oceanU.uFoam.value = 0.04 + 0.8 * s * s;
       // clouds
       cloudU.uTime.value = world.time * (1 + 3 * s);
       cloudU.uCover.value =

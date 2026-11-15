@@ -236,6 +236,14 @@ world.renderer.setAnimationLoop(() => {
       mode.exit(world);
       idx = (idx + 1) % order.length;
       mode = order[idx]!();
+      gauges.clear();
+      // start the camera near the new section so there is no long fly-over
+      const at = idx === 1 ? P.boatStart : idx === 2 ? P.cove : P.bikeStart;
+      world.camera.position.set(
+        at.x - 8,
+        Math.max(world.heightAt(at.x, at.z), 0) + 5,
+        at.z + 8,
+      );
       mode.enter(world, hud);
     }
   }
@@ -250,7 +258,7 @@ world.renderer.setAnimationLoop(() => {
     lastGraphicsReport = performance.now();
     // dynamic resolution toward 60 fps
     const prev = dynamic.scale;
-    if (stats.fps < 54) dynamic.scale = Math.max(0.5, dynamic.scale * 0.9);
+    if (stats.fps < 54) dynamic.scale = Math.max(0.7, dynamic.scale * 0.93);
     else if (stats.fps > 59 && dynamic.scale < 1)
       dynamic.scale = Math.min(1, dynamic.scale * 1.04);
     if (dynamic.scale !== prev) world.resize();
