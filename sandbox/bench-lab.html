@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>M0 · Mechanism bench</title>
+    <link rel="stylesheet" href="./bench.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">AVIRAJ / M0 LAB</p>
+          <h1>Mechanism bench</h1>
+          <p>Build a train. Turn the driver. Read the result.</p>
+        </div>
+        <a href="./bike-lab.html">Bike lab ↗</a>
+      </header>
+      <div class="layout">
+        <section class="board-panel">
+          <div class="bar">
+            <label
+              >Exercise
+              <select id="exercise"></select></label
+            ><span id="goal"></span>
+          </div>
+          <canvas
+            id="board"
+            width="1000"
+            height="620"
+            aria-label="Mechanism board. Use the labelled part, axle and tier controls to build with the keyboard."
+          ></canvas>
+          <div id="gauges" class="gauges"></div>
+          <p id="status" role="status" aria-live="polite">
+            Place parts to begin.
+          </p>
+          <p id="diagnostics"></p>
+        </section>
+        <aside>
+          <h2>01 / Place a part</h2>
+          <label
+            >Tray part
+            <select id="part"></select></label
+          ><label
+            >Axle
+            <select id="axle"></select></label
+          ><label
+            >Tier
+            <select id="tier"></select
+          ></label>
+          <div class="buttons">
+            <button id="place">Place part</button
+            ><button id="remove">Lift part</button>
+          </div>
+          <h2>02 / Route a chain</h2>
+          <p>
+            Choose a mounted sprocket with the controls, or click it on the
+            board.
+          </p>
+          <button id="route">Add selected sprocket</button
+          ><output id="route-list">Route: empty</output>
+          <label
+            >Chain links
+            <input
+              id="links"
+              type="number"
+              min="1"
+              max="120"
+              value="80" /></label
+          ><button id="chain">Close & fit chain</button>
+          <label
+            >Tensioner
+            <input
+              id="tension"
+              type="range"
+              min="0"
+              max="100"
+              value="0"
+            /><output id="tension-value">0%</output></label
+          >
+          <h2>03 / Turn the driver</h2>
+          <div class="buttons">
+            <button id="test" class="primary">Test train</button
+            ><button id="undo">Undo</button><button id="hint">Hint</button
+            ><button id="clear">Clear board</button>
+          </div>
+          <p id="hint-text" role="status"></p>
+          <details>
+            <summary>Keyboard & model notes</summary>
+            <p>
+              Tab between controls, use arrows to choose, Enter to place or
+              test. All pointer actions have labelled keyboard alternatives.
+              Ratchets fit the hub of the part at the selected axle and tier.
+              Tier 1 is lower; studs do not block tier 2. Distances and chain
+              slack are calculated in metres.
+            </p>
+          </details>
+        </aside>
+      </div>
+      <footer>
+        M0 rule exercises · External, coplanar chain loops · No game saves or
+        campaign state
+      </footer>
+    </main>
+    <script type="module" src="./bench.ts"></script>
+  </body>
+</html>
