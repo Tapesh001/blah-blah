@@ -1,0 +1,6 @@
+.view-toggle.winch-toggle { bottom: 133px; }
+@media(max-width:600px) { .view-toggle.winch-toggle { bottom:180px; } }
+@media(prefers-reduced-motion:reduce) {
+  .axle-glow,#loading span { animation:none!important; }
+  button,#toast { transition:none!important; }
+}
