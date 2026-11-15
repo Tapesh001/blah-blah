@@ -3,6 +3,21 @@
 M0 landed in `f136059461e14ecac93e20863463c0c2e617d550` on `main`.
 The implementation is also available on `shobhit/m0-foundation`.
 
+## Concurrent integration round
+
+Tapesh's PR #1 landed on main while the M0 handoff was being pushed. Its
+T0.1 graphics pipeline is preserved and included in the production sandbox
+index/build. A typed declaration bridges its JavaScript entry without weakening
+strict TypeScript. The pipeline now uses PCFShadowMap, because the upgraded
+Three.js removed PCFSoftShadowMap. Its six existing unit tests run in the root
+test command; an added browser test verifies pass toggles, a custom post pass,
+resize, context recovery and disposal on Three 0.187.0.
+
+The renderer remains standalone: it does not yet implement the provisional
+shared Gfx service. Existing graphics performance artifacts retain their
+original hardware/version provenance; no new performance claim is made.
+The newly published `mansi-ocean` branch has not been merged in this M0 round.
+
 ## Scope and provenance
 
 The repository at `243495d` contained only the old JavaScript prototype.
@@ -50,15 +65,17 @@ are retained; this milestone produces a deployable `dist/` artifact.
 ## Validation
 
 - Clean `npm ci` succeeds; `npm audit` reports zero vulnerabilities.
-- `npm run check`: strict types, owner boundaries, formatting, 37 unit tests
+- `npm run check`: strict types, owner boundaries, formatting, 37 foundation
+  unit/boundary tests plus 6 graphics unit tests
   and the multi-page production build pass.
-- `npm run e2e`: 11 Chromium tests pass against the production build, including
+- `npm run e2e`: 12 Chromium tests cover the production build, including
   real-key chapter traversal, deep links, pause, phone interaction/cleanup and
-  all eight sandbox pages.
+  all eight foundation sandbox pages plus the standalone HDR pipeline.
 - Desktop (1280×720) and landscape phone (844×390) screenshots were inspected.
   A footer/action overlap was corrected and covered by a browser assertion.
-- Vite reports a non-fatal 545.5 kB shared Three.js/runtime chunk warning
-  (approximately 137.4 kB gzip). Chunk splitting/loading optimization is deferred.
+- Vite reports a non-fatal 531.1 kB shared Three.js chunk warning
+  (approximately 131.1 kB gzip). Loading optimization is deferred.
 - Both GitHub Actions jobs (`check` and `browser`) passed on the implementation
   commit: [Verify run 43696796643](https://github.com/Tapesh001/blah-blah/actions/runs/43696796643).
   The Linux browser job reports all 11 tests passing.
+  The combined graphics integration is being revalidated separately.

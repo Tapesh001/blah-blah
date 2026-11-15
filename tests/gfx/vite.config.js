@@ -6,6 +6,10 @@ export default defineConfig({
   root: fileURLToPath(new URL('../../', import.meta.url)),
   build: {
     outDir: '.local/gfx-dist',
-    rollupOptions: { input: fileURLToPath(new URL('../../sandbox/gfx-pipeline.html', import.meta.url)) },
+    rollupOptions: {
+      input: fileURLToPath(
+        new URL('../../sandbox/gfx-pipeline.html', import.meta.url),
+      ),
+    },
   },
 });

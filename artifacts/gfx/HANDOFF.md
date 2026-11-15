@@ -25,12 +25,12 @@ The shadow timing wrapper targets this pinned version and must be reviewed on a 
 
 ## Validation
 
-* `node --test tests/gfx/*.test.js`: **6/6 passed** (dimensions, pass lifecycle, asynchronous query
+- `node --test tests/gfx/*.test.js`: **6/6 passed** (dimensions, pass lifecycle, asynchronous query
   completion, disjoint handling, queue bounds, unsupported timers, context loss and target ownership).
-* `npm test`: **5/5 existing game tests passed**.
-* `npm run build`: **passed**, with the existing game's >500 kB chunk advisory.
-* `npx vite build --config tests/gfx/vite.config.js`: **passed**; isolated sandbox built separately.
-* `node tests/gfx/browser.mjs` against the built sandbox: **passed**. Every stage toggled;
+- `npm test`: **5/5 existing game tests passed**.
+- `npm run build`: **passed**, with the existing game's >500 kB chunk advisory.
+- `npx vite build --config tests/gfx/vite.config.js`: **passed**; isolated sandbox built separately.
+- `node tests/gfx/browser.mjs` against the built sandbox: **passed**. Every stage toggled;
   caller scene state preserved; custom post visibly changed the image and bypass restored it;
   resize and render-scale changes worked; forced WebGL loss/restoration resumed rendering;
   disposal removed the overlay; normal URL had no overlay. **No console errors, shader warnings
@@ -46,11 +46,11 @@ Built sandbox, headless Chrome 157, Windows, Intel UHD Graphics via ANGLE / Dire
 Canvas: 1920 × 1080; device pixel ratio: 1; shadow map: 1024². Each scale had 60 warm-up frames,
 then 120 sampled CPU frames. GPU results are deduplicated by source frame, and include clear.
 
-| Render scale | Internal pixels | Mean CPU submission | Mean GPU | GPU samples |
-| --- | --- | ---: | ---: | ---: |
-| 0.50 | 960 × 540 | 0.345 ms | 2.204 ms | 120 |
-| 0.75 (sandbox default) | 1440 × 810 | 0.461 ms | 3.930 ms | 119 |
-| 1.00 | 1920 × 1080 | 0.839 ms | 6.696 ms | 120 |
+| Render scale           | Internal pixels | Mean CPU submission | Mean GPU | GPU samples |
+| ---------------------- | --------------- | ------------------: | -------: | ----------: |
+| 0.50                   | 960 × 540       |            0.345 ms | 2.204 ms |         120 |
+| 0.75 (sandbox default) | 1440 × 810      |            0.461 ms | 3.930 ms |         119 |
+| 1.00                   | 1920 × 1080     |            0.839 ms | 6.696 ms |         120 |
 
 All runs: **37 draw calls, 928 triangles, 4 geometries, 5 textures** as reported by Three for the
 fixture, including shadow/fullscreen draws. These are pipeline-fixture costs, not full-game,
@@ -58,16 +58,16 @@ fixture, including shadow/fullscreen draws. These are pipeline-fixture costs, no
 
 Per-pass GPU means at the default 0.75 scale (`?perf=1` uses the same timing instrumentation):
 
-| Pass | GPU ms |
-| --- | ---: |
-| Clear | 0.627 |
-| Shadows | 1.156 |
-| Opaque | 0.113 |
-| Sky fixture | 0.373 |
-| Ocean-stage fixture | 0.280 |
-| Transparents | 0.013 |
-| Post copy | 0.713 |
-| Upscale + diagnostic presentation | 0.655 |
+| Pass                              | GPU ms |
+| --------------------------------- | -----: |
+| Clear                             |  0.627 |
+| Shadows                           |  1.156 |
+| Opaque                            |  0.113 |
+| Sky fixture                       |  0.373 |
+| Ocean-stage fixture               |  0.280 |
+| Transparents                      |  0.013 |
+| Post copy                         |  0.713 |
+| Upscale + diagnostic presentation |  0.655 |
 
 Raw measurements, environment and per-pass CPU/GPU values: [t0-1-performance.json](t0-1-performance.json).
 Screenshots: [initial frame](t0-1-pipeline.png), [resize](t0-1-resized.png),

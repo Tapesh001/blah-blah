@@ -25,6 +25,8 @@ to the chapter context; restoring a saved game is a later milestone.
 Open `/sandbox/` for bike, bench, sail, cloth, isle, ocean, sky and terrain
 development pages. Each starts a fresh context and uses the owner's public
 `mount(ctx)` export when available.
+The additional `gfx-pipeline.html` page preserves Tapesh's standalone HDR
+pipeline and does not replace the default Gfx stub yet.
 
 ## Verify
 
@@ -34,10 +36,12 @@ npx playwright install chromium
 npm run e2e
 ```
 
-`check` runs strict type checking, ESLint/Prettier, unit tests and production
+`check` runs strict type checking, ESLint/Prettier, 37 foundation tests,
+6 standalone graphics unit tests and production
 build. On Linux install the browser with
 `npx playwright install --with-deps chromium`.
-The browser suite exercises the production build using Chromium software GL.
+The 12-test browser suite exercises the production build using Chromium
+software GL, including graphics resize and context-loss recovery.
 
 ```sh
 npm run build

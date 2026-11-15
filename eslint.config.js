@@ -35,6 +35,7 @@ export default [
   {
     ignores: [
       'legacy/**',
+      '.local/**',
       'dist/**',
       'node_modules/**',
       'playwright-report/**',
@@ -45,7 +46,7 @@ export default [
   ...folders
     .filter((f) => f !== 'game')
     .map((folder) => ({
-      files: ['src/' + folder + '/**/*.ts'],
+      files: ['src/' + folder + '/**/*.{ts,js}'],
       rules: { 'no-restricted-imports': ['error', rules(folder)] },
     })),
   {
