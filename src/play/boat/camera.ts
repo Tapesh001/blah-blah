@@ -52,7 +52,7 @@ export class BoatCamera {
     this.matrix.lookAt(this.thirdPosition, this.look, this.up);
     this.thirdRotation.setFromRotationMatrix(this.matrix);
     boat.updateMatrixWorld(true);
-    this.firstPosition.set(0.18, 1.65, 2.2).applyMatrix4(boat.matrixWorld);
+    this.firstPosition.set(0.5, 1.65, 2.4).applyMatrix4(boat.matrixWorld);
     this.look.set(
       Math.sin(this.yaw) * Math.cos(this.pitch),
       Math.sin(this.pitch),

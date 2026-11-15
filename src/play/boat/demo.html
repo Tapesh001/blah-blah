@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>The Crossing · Boat test</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #8caaba;
+        color: #fff8e4;
+        font:
+          15px/1.6 system-ui,
+          sans-serif;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      aside {
+        position: fixed;
+        inset: 20px auto auto 24px;
+        text-shadow: 0 2px 6px #163944;
+        pointer-events: none;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 12px;
+      }
+      #gauges {
+        font-variant-numeric: tabular-nums;
+        white-space: pre-line;
+      }
+      #prompt {
+        position: fixed;
+        bottom: 28px;
+        width: 100%;
+        text-align: center;
+        text-shadow: 0 2px 6px #163944;
+        pointer-events: none;
+      }
+      #controls {
+        position: fixed;
+        right: 20px;
+        top: 20px;
+        padding: 14px 18px;
+        background: #163944dc;
+        border-radius: 8px;
+        max-width: 300px;
+      }
+      button,
+      input {
+        font: inherit;
+        accent-color: #e4bd70;
+      }
+      button {
+        background: #e4bd70;
+        color: #163944;
+        border: 0;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #toast {
+        max-width: 450px;
+      }
+      summary {
+        cursor: pointer;
+      }
+      @media (max-width: 650px) {
+        aside {
+          inset: 12px auto auto 12px;
+          font-size: 12px;
+        }
+        h1 {
+          font-size: 16px;
+        }
+        #toast {
+          max-width: 190px;
+        }
+        #prompt {
+          padding: 0 12px;
+          font-size: 12px;
+        }
+        #controls {
+          top: auto;
+          bottom: 75px;
+          max-width: 220px;
+          font-size: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas aria-label="Sailing boat on a flat test ocean"></canvas>
+    <aside>
+      <h1 id="objective"></h1>
+      <div id="gauges"></div>
+      <p id="toast" role="status"></p>
+    </aside>
+    <details id="controls">
+      <summary>Test controls</summary>
+      <div>Flat sea · constant wind fixture</div>
+      <label
+        >Wind <input id="wind" type="range" min="2" max="26" value="8" />
+        <output id="wind-value">8 m/s</output></label
+      >
+      <p>
+        A/D steer · W/S reef · V cockpit<br />E fast · Q low · R ease<br />Drag
+        to look around in the cockpit.
+      </p>
+      <button id="reset" type="button">Reset boat</button>
+    </details>
+    <div id="prompt"></div>
+    <script type="module" src="./demo.ts"></script>
+  </body>
+</html>
