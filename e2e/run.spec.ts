@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test';
+// The playable game owns /. Keep the M0 runtime's chapter/deep-link contract
+// covered through its own production-built fixture, not the game's newer UI.
+const foundation = '/sandbox/foundation.html';
 test('keyboard traverses the five stub chapters and emits completion events', async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/');
+  await page.goto(foundation);
   await page.waitForFunction(() => window.__cg?.ready);
   await page.screenshot({ path: testInfo.outputPath('title-desktop.png') });
   for (const chapter of ['title', 'ride', 'sail', 'isle', 'ending'] as const) {
@@ -26,7 +29,9 @@ test('keyboard traverses the five stub chapters and emits completion events', as
 test('supports deep links, pause and restart without catch-up', async ({
   page,
 }) => {
-  await page.goto('/?chapter=sail&cp=squall&storm=0.8&q=low&seed=7');
+  await page.goto(
+    foundation + '?chapter=sail&cp=squall&storm=0.8&q=low&seed=7',
+  );
   await page.waitForFunction(() => window.__cg?.ready);
   await expect(page.locator('.interface')).toHaveAttribute(
     'data-chapter',
@@ -54,7 +59,7 @@ test('button interaction and cleanup work on phone landscape', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 844, height: 390 });
-  await page.goto('/');
+  await page.goto(foundation);
   await page.waitForFunction(() => window.__cg?.ready);
   await page.screenshot({ path: testInfo.outputPath('title-phone.png') });
   const actionBounds = await page

@@ -40,7 +40,12 @@ export interface World {
   /** Sim time in seconds. */
   time: number;
   /** Spray / dust / sparks burst. */
-  burst(kind: 'spray' | 'dust' | 'sparks', pos: THREE.Vector3, vel: THREE.Vector3, count: number): void;
+  burst(
+    kind: 'spray' | 'dust' | 'sparks',
+    pos: THREE.Vector3,
+    vel: THREE.Vector3,
+    count: number,
+  ): void;
   /** Fixed places. */
   places: {
     bikeStart: { x: number; z: number; heading: number };
@@ -62,7 +67,13 @@ export interface Input {
   down(code: string): boolean;
   pressed(code: string): boolean;
   /** Pointer in normalised device coords (-1..1, +y up) and button state. */
-  pointer: { x: number; y: number; down: boolean; pressed: boolean; released: boolean };
+  pointer: {
+    x: number;
+    y: number;
+    down: boolean;
+    pressed: boolean;
+    released: boolean;
+  };
 }
 
 export interface Hud {

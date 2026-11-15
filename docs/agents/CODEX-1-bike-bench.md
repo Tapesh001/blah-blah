@@ -3,6 +3,7 @@
 Paste to Codex: "Read `docs/agents/CODEX-1-bike-bench.md` and `src/play/api.ts`. Build it. Push branch `codex1/bike-bench`."
 
 ## Rules
+
 - Only create/edit files in `src/play/bike/` and `src/play/bench/`. Touch nothing else.
 - Code against `src/play/api.ts` (read-only). Claude builds the world and main loop and calls you.
 - three.js `0.187.0`, TypeScript strict. `npm run typecheck` must pass. No new dependencies. No asset files: build all meshes in code.
@@ -19,6 +20,7 @@ export function createBench(kind: 'bike' | 'engine'): GameMode;
 ```
 
 ## 1. Bike mode (`createBikeMode`)
+
 Reuse the physics already in `src/land/sim/bike.ts` if it fits; otherwise write new.
 
 - Start at `world.places.bikeStart`. Finish (`done() = true`) within 12 m of `world.places.harbour`.
@@ -31,6 +33,7 @@ Reuse the physics already in `src/land/sim/bike.ts` if it fits; otherwise write 
 - HUD: `speed`, `gear`, `chain`. Objective: "Ride to the harbour".
 
 ## 2. Bench (`createBench`)
+
 Own close-up view: place camera yourself above a workbench you build (dark wood board, lamp glow, brass/steel gears with real teeth via `ExtrudeGeometry`). Reuse `src/mech/sim/evaluate.ts` for the gear logic if it fits.
 
 - Board has axles (pegs). A driver gear and an output gear are fixed. A tray holds loose gears with different tooth counts.
@@ -42,4 +45,5 @@ Own close-up view: place camera yourself above a workbench you build (dark wood 
 - Sparks (`world.burst('sparks', ...)`) and a shake when gears clash. H = hint text.
 
 ## Done means
+
 `npm run typecheck` passes, both factories exported, pushed to `codex1/bike-bench`. Write what works and what does not in `docs/handoff/codex1.md`.

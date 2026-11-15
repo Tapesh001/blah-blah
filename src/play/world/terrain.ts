@@ -53,7 +53,10 @@ function isleBase(x: number, z: number, I: Isle): number {
   const n = fbm(x / 170 + I.seed, z / 170 - I.seed, 5);
   const ridge = 1 - Math.abs(fbm(x / 90 - I.seed, z / 90 + I.seed, 4) * 2 - 1);
   const shape = Math.pow(Math.max(0, 1 - d * d), 1.5);
-  let h = I.peak * shape * (0.55 + 0.75 * n) + 14 * ridge * shape + 3 * fbm(x / 22, z / 22, 3) * shape;
+  let h =
+    I.peak * shape * (0.55 + 0.75 * n) +
+    14 * ridge * shape +
+    3 * fbm(x / 22, z / 22, 3) * shape;
   h += (0.92 - d) * 9;
   if (d > 0.9) h -= (d - 0.9) * 70;
   return Math.max(SEABED, h);
@@ -84,8 +87,15 @@ function catmull(p: number[][], step: number): { x: number; z: number }[] {
       const t2 = t * t;
       const t3 = t2 * t;
       const f = (a: number, b: number, c: number, d: number) =>
-        0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
-      out.push({ x: f(p0[0]!, p1[0]!, p2[0]!, p3[0]!), z: f(p0[1]!, p1[1]!, p2[1]!, p3[1]!) });
+        0.5 *
+        (2 * b +
+          (-a + c) * t +
+          (2 * a - 5 * b + 4 * c - d) * t2 +
+          (-a + 3 * b - 3 * c + d) * t3);
+      out.push({
+        x: f(p0[0]!, p1[0]!, p2[0]!, p3[0]!),
+        z: f(p0[1]!, p1[1]!, p2[1]!, p3[1]!),
+      });
     }
   }
   const last = p[p.length - 1]!;
@@ -108,17 +118,47 @@ function buildRoad(ctrl: number[][]): RoadSample[] {
     }
     const a = pts[Math.max(0, i - 1)]!;
     const b = pts[Math.min(pts.length - 1, i + 1)]!;
-    if (i > 0) s += Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.z - pts[i - 1]!.z);
-    out.push({ x: pts[i]!.x, z: pts[i]!.z, h: sum / c, heading: Math.atan2(b.x - a.x, -(b.z - a.z)), s });
+    if (i > 0)
+      s += Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.z - pts[i - 1]!.z);
+    out.push({
+      x: pts[i]!.x,
+      z: pts[i]!.z,
+      h: sum / c,
+      heading: Math.atan2(b.x - a.x, -(b.z - a.z)),
+      s,
+    });
   }
   return out;
 }
 const ROAD_A = buildRoad([
-  [-25, -15], [45, -65], [115, -35], [95, 35], [20, 75], [-65, 110], [-150, 85], [-200, 5], [-170, -95],
-  [-80, -170], [40, -200], [160, -170], [250, -90], [285, 10], [255, 110], [310, 165], [372, 120], [408, 62], [452, 55],
+  [-25, -15],
+  [45, -65],
+  [115, -35],
+  [95, 35],
+  [20, 75],
+  [-65, 110],
+  [-150, 85],
+  [-200, 5],
+  [-170, -95],
+  [-80, -170],
+  [40, -200],
+  [160, -170],
+  [250, -90],
+  [285, 10],
+  [255, 110],
+  [310, 165],
+  [372, 120],
+  [408, 62],
+  [452, 55],
 ]);
 const ROAD_B = buildRoad([
-  [1218, -205], [1262, -172], [1322, -192], [1372, -250], [1432, -268], [1470, -232], [1492, -222],
+  [1218, -205],
+  [1262, -172],
+  [1322, -192],
+  [1372, -250],
+  [1432, -268],
+  [1470, -232],
+  [1492, -222],
 ]);
 export const ROADS = [ROAD_A, ROAD_B];
 const CELL = 24;
@@ -132,7 +172,10 @@ ROADS.forEach((road, ri) =>
   }),
 );
 /** nearest road sample within ~2 cells; returns [dist, sample, roadIndex, sampleIndex] */
-function nearest(x: number, z: number): [number, RoadSample, number, number] | null {
+function nearest(
+  x: number,
+  z: number,
+): [number, RoadSample, number, number] | null {
   const cx = Math.floor(x / CELL);
   const cz = Math.floor(z / CELL);
   let best = 1e9;
@@ -223,11 +266,21 @@ export function roadNearest(x: number, z: number): RoadHit {
     }
   }
   const p = ROAD_A[bi]!;
-  return { dist: Math.sqrt(best), progress: bi / (ROAD_A.length - 1), x: p.x, z: p.z, heading: p.heading };
+  return {
+    dist: Math.sqrt(best),
+    progress: bi / (ROAD_A.length - 1),
+    x: p.x,
+    z: p.z,
+    heading: p.heading,
+  };
 }
-export function roadPoint(progress: number, road = 0): { x: number; z: number; heading: number } {
+export function roadPoint(
+  progress: number,
+  road = 0,
+): { x: number; z: number; heading: number } {
   const R = ROADS[road]!;
-  const p = R[Math.round(THREE.MathUtils.clamp(progress, 0, 1) * (R.length - 1))]!;
+  const p =
+    R[Math.round(THREE.MathUtils.clamp(progress, 0, 1) * (R.length - 1))]!;
   return { x: p.x, z: p.z, heading: p.heading };
 }
 
@@ -259,7 +312,8 @@ export function buildTerrainMesh(G: IsleGrid, mat: THREE.Material): THREE.Mesh {
     const z = pos.getZ(k) + G.isle.z;
     const nz = fbm(x / 14, z / 14, 3);
     const rd = G.road[k]!;
-    if (h < 0.2) c.copy(cBed).lerp(cSand, THREE.MathUtils.smoothstep(h, -3, 0.2));
+    if (h < 0.2)
+      c.copy(cBed).lerp(cSand, THREE.MathUtils.smoothstep(h, -3, 0.2));
     else {
       c.copy(cGrassA).lerp(cGrassB, nz);
       c.lerp(cHeath, THREE.MathUtils.smoothstep(h, 70, 115) * 0.3);
@@ -293,17 +347,27 @@ export function buildHeightTexture(G: IsleGrid): THREE.DataTexture {
     const h = G.h[k]!;
     const i = k % n;
     const j = Math.floor(k / n);
-    const hx = G.h[j * n + Math.min(n - 1, i + 1)]! - G.h[j * n + Math.max(0, i - 1)]!;
-    const hz = G.h[Math.min(n - 1, j + 1) * n + i]! - G.h[Math.max(0, j - 1) * n + i]!;
+    const hx =
+      G.h[j * n + Math.min(n - 1, i + 1)]! - G.h[j * n + Math.max(0, i - 1)]!;
+    const hz =
+      G.h[Math.min(n - 1, j + 1) * n + i]! - G.h[Math.max(0, j - 1) * n + i]!;
     const slope = Math.hypot(hx, hz) / ((2 * G.size) / n);
-    let g = THREE.MathUtils.smoothstep(h, 2.5, 5) * (1 - THREE.MathUtils.smoothstep(slope, 0.55, 0.85));
+    let g =
+      THREE.MathUtils.smoothstep(h, 2.5, 5) *
+      (1 - THREE.MathUtils.smoothstep(slope, 0.55, 0.85));
     g *= THREE.MathUtils.smoothstep(G.road[k]!, 4.5, 8);
     g *= 1 - THREE.MathUtils.smoothstep(h, 85, 112) * 0.7;
     data[k * 4] = THREE.DataUtils.toHalfFloat(h);
     data[k * 4 + 1] = THREE.DataUtils.toHalfFloat(g);
     data[k * 4 + 3] = THREE.DataUtils.toHalfFloat(1);
   }
-  const t = new THREE.DataTexture(data, n, n, THREE.RGBAFormat, THREE.HalfFloatType);
+  const t = new THREE.DataTexture(
+    data,
+    n,
+    n,
+    THREE.RGBAFormat,
+    THREE.HalfFloatType,
+  );
   t.magFilter = THREE.LinearFilter;
   t.minFilter = THREE.LinearFilter;
   t.needsUpdate = true;

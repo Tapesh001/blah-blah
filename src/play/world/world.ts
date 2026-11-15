@@ -9,7 +9,13 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GpuTimer } from '../../gfx/frame-tools.js';
-import { GRAPHICS, savedGraphics, graphicsRatio, detailTerrain, type GraphicsQuality } from './graphics';
+import {
+  GRAPHICS,
+  savedGraphics,
+  graphicsRatio,
+  detailTerrain,
+  type GraphicsQuality,
+} from './graphics';
 import type { World } from '../api';
 import {
   GRID_A,
@@ -51,12 +57,23 @@ export interface WorldHandle extends World {
   speedFx: number;
   quality: GraphicsQuality;
   setQuality(quality: GraphicsQuality): void;
-  graphicsStats(): { fps: number; gpuMs: number | null; width: number; height: number; triangles: number; calls: number };
+  graphicsStats(): {
+    fps: number;
+    gpuMs: number | null;
+    width: number;
+    height: number;
+    triangles: number;
+    calls: number;
+  };
 }
 
 export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
   let quality = savedGraphics();
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: false,
+    powerPreference: 'high-performance',
+  });
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.info.autoReset = false;
@@ -75,7 +92,9 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
   const sunDir = new THREE.Vector3();
   const sun = new THREE.DirectionalLight(0xffe2b8, 3);
   sun.castShadow = true;
-  sun.shadow.mapSize.setScalar(Math.min(GRAPHICS[quality].shadow, renderer.capabilities.maxTextureSize));
+  sun.shadow.mapSize.setScalar(
+    Math.min(GRAPHICS[quality].shadow, renderer.capabilities.maxTextureSize),
+  );
   const sc = sun.shadow.camera;
   sc.near = 1;
   sc.far = 600;
@@ -88,9 +107,16 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
   scene.add(hemi);
 
   /* ---- terrain ---- */
-  const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+  const terrainMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.95,
+    metalness: 0,
+  });
   detailTerrain(terrainMat);
-  scene.add(buildTerrainMesh(GRID_A, terrainMat), buildTerrainMesh(GRID_B, terrainMat));
+  scene.add(
+    buildTerrainMesh(GRID_A, terrainMat),
+    buildTerrainMesh(GRID_B, terrainMat),
+  );
   const hTexA = buildHeightTexture(GRID_A);
   const hTexB = buildHeightTexture(GRID_B);
 
@@ -100,16 +126,22 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
   environmentSky.material.uniforms = sky.material.uniforms;
   // Direct sunlight is supplied by the shadowed directional light. Bound the
   // solar disc in the environment capture to avoid duplicate specular energy.
-  environmentSky.material.fragmentShader = environmentSky.material.fragmentShader.replace(
-    'gl_FragColor = vec4( texColor, 1.0 );',
-    'gl_FragColor = vec4( min(texColor, vec3(2.0)), 1.0 );',
-  );
+  environmentSky.material.fragmentShader =
+    environmentSky.material.fragmentShader.replace(
+      'gl_FragColor = vec4( texColor, 1.0 );',
+      'gl_FragColor = vec4( min(texColor, vec3(2.0)), 1.0 );',
+    );
   environmentScene.add(environmentSky);
   const pmrem = new THREE.PMREMGenerator(renderer);
   let environmentTarget: THREE.WebGLRenderTarget | null = null;
   let environmentStorm = -1;
   scene.environmentIntensity = 0.4;
-  const reflection = new Reflector(new THREE.PlaneGeometry(2, 2), { textureWidth: 512, textureHeight: 512, clipBias: 0.004, multisample: 0 });
+  const reflection = new Reflector(new THREE.PlaneGeometry(2, 2), {
+    textureWidth: 512,
+    textureHeight: 512,
+    clipBias: 0.004,
+    multisample: 0,
+  });
   reflection.rotation.x = -Math.PI / 2;
   reflection.updateMatrixWorld(true);
   const reflectionMaterial = reflection.material as THREE.ShaderMaterial;
@@ -132,14 +164,22 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
     uFoam: { value: 0.2 },
     uReflection: reflectionMaterial.uniforms['tDiffuse']!,
     uReflectionMatrix: { value: reflectionMatrix },
-    uHeightA: { value: hTexA }, uHeightB: { value: hTexB },
+    uHeightA: { value: hTexA },
+    uHeightB: { value: hTexB },
     uGridA: { value: new THREE.Vector3(GRID_A.ox, GRID_A.oz, GRID_A.size) },
     uGridB: { value: new THREE.Vector3(GRID_B.ox, GRID_B.oz, GRID_B.size) },
-    uWd: { value: WAVES.map((w) => new THREE.Vector2(w.d[0], w.d[1]).normalize()) },
+    uWd: {
+      value: WAVES.map((w) => new THREE.Vector2(w.d[0], w.d[1]).normalize()),
+    },
     uWa: { value: WAVES.map((w) => w.a) },
     uWl: { value: WAVES.map((w) => w.l) },
   };
-  const oceanGeo = new THREE.PlaneGeometry(2, 2, GRAPHICS[quality].ocean, GRAPHICS[quality].ocean);
+  const oceanGeo = new THREE.PlaneGeometry(
+    2,
+    2,
+    GRAPHICS[quality].ocean,
+    GRAPHICS[quality].ocean,
+  );
   oceanGeo.rotateX(-Math.PI / 2);
   const ocean = new THREE.Mesh(
     oceanGeo,
@@ -271,7 +311,10 @@ void main(){
   blade.setAttribute(
     'position',
     new THREE.Float32BufferAttribute(
-      [-0.09, 0, 0, 0.09, 0, 0, -0.06, 0.5, 0, 0.09, 0, 0, 0.06, 0.5, 0, -0.06, 0.5, 0, -0.06, 0.5, 0, 0.06, 0.5, 0, 0, 1, 0],
+      [
+        -0.09, 0, 0, 0.09, 0, 0, -0.06, 0.5, 0, 0.09, 0, 0, 0.06, 0.5, 0, -0.06,
+        0.5, 0, -0.06, 0.5, 0, 0.06, 0.5, 0, 0, 1, 0,
+      ],
       3,
     ),
   );
@@ -342,7 +385,7 @@ void main(){
   /* ---- scenery ---- */
   const rnd = (() => {
     let s = 1234567;
-    return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+    return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
   })();
   const paint = (g: THREE.BufferGeometry, hex: number) => {
     const c = new THREE.Color(hex);
@@ -353,13 +396,29 @@ void main(){
     return g.index ? g.toNonIndexed() : g;
   };
   const pine = mergeGeometries([
-    paint(new THREE.CylinderGeometry(0.18, 0.3, 2.2, 6).translate(0, 1.1, 0), 0x4a3524),
+    paint(
+      new THREE.CylinderGeometry(0.18, 0.3, 2.2, 6).translate(0, 1.1, 0),
+      0x4a3524,
+    ),
     paint(new THREE.ConeGeometry(2.0, 3.4, 7).translate(0, 3.4, 0), 0x1f4a2a),
     paint(new THREE.ConeGeometry(1.5, 3.0, 7).translate(0, 5.2, 0), 0x275a31),
-    paint(new THREE.ConeGeometry(0.95, 2.6, 7).translate(0.15, 6.9, 0), 0x2f6a38),
+    paint(
+      new THREE.ConeGeometry(0.95, 2.6, 7).translate(0.15, 6.9, 0),
+      0x2f6a38,
+    ),
   ])!;
-  const propMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
-  const scatter = (geo: THREE.BufferGeometry, count: number, G: IsleGrid, ok: (h: number, x: number, z: number) => boolean, sMin: number, sMax: number) => {
+  const propMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.9,
+  });
+  const scatter = (
+    geo: THREE.BufferGeometry,
+    count: number,
+    G: IsleGrid,
+    ok: (h: number, x: number, z: number) => boolean,
+    sMin: number,
+    sMax: number,
+  ) => {
     const im = new THREE.InstancedMesh(geo, propMat, count);
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
@@ -372,7 +431,11 @@ void main(){
       if (!ok(h, x, z)) continue;
       const s = sMin + rnd() * (sMax - sMin);
       e.set((rnd() - 0.5) * 0.12, rnd() * 6.28, (rnd() - 0.5) * 0.12 - 0.08);
-      m.compose(new THREE.Vector3(x, h - 0.15, z), q.setFromEuler(e), new THREE.Vector3(s, s * (0.85 + rnd() * 0.4), s));
+      m.compose(
+        new THREE.Vector3(x, h - 0.15, z),
+        q.setFromEuler(e),
+        new THREE.Vector3(s, s * (0.85 + rnd() * 0.4), s),
+      );
       im.setMatrixAt(n++, m);
     }
     im.count = n;
@@ -381,11 +444,29 @@ void main(){
     scene.add(im);
   };
   const farFromRoad = (x: number, z: number, d: number) => {
-    for (const R of ROADS) for (let i = 0; i < R.length; i += 3) if (Math.hypot(R[i]!.x - x, R[i]!.z - z) < d) return false;
+    for (const R of ROADS)
+      for (let i = 0; i < R.length; i += 3)
+        if (Math.hypot(R[i]!.x - x, R[i]!.z - z) < d) return false;
     return true;
   };
-  scatter(pine, 1100, GRID_A, (h, x, z) => h > 6 && h < 88 && fbm(x / 70, z / 70, 3) > 0.52 && farFromRoad(x, z, 9), 0.8, 1.7);
-  scatter(pine, 160, GRID_B, (h, x, z) => h > 6 && h < 60 && fbm(x / 50, z / 50, 3) > 0.58 && farFromRoad(x, z, 8), 0.6, 1.2);
+  scatter(
+    pine,
+    1100,
+    GRID_A,
+    (h, x, z) =>
+      h > 6 && h < 88 && fbm(x / 70, z / 70, 3) > 0.52 && farFromRoad(x, z, 9),
+    0.8,
+    1.7,
+  );
+  scatter(
+    pine,
+    160,
+    GRID_B,
+    (h, x, z) =>
+      h > 6 && h < 60 && fbm(x / 50, z / 50, 3) > 0.58 && farFromRoad(x, z, 8),
+    0.6,
+    1.2,
+  );
   const rock = paint(new THREE.IcosahedronGeometry(1, 1), 0x77726c);
   {
     const p = rock.attributes.position!;
@@ -395,16 +476,51 @@ void main(){
     }
     rock.computeVertexNormals();
   }
-  scatter(rock, 500, GRID_A, (h, x, z) => h > 0.5 && farFromRoad(x, z, 7), 0.5, 2.6);
-  scatter(rock, 300, GRID_B, (h, x, z) => h > 0.5 && farFromRoad(x, z, 6), 0.6, 3.2);
+  scatter(
+    rock,
+    500,
+    GRID_A,
+    (h, x, z) => h > 0.5 && farFromRoad(x, z, 7),
+    0.5,
+    2.6,
+  );
+  scatter(
+    rock,
+    300,
+    GRID_B,
+    (h, x, z) => h > 0.5 && farFromRoad(x, z, 6),
+    0.6,
+    3.2,
+  );
 
   // lamps along roads, houses, turbines, foundry, engine tower
-  const glowMat = new THREE.MeshStandardMaterial({ color: 0x221a10, emissive: 0xffb45a, emissiveIntensity: 6 });
-  const ironMat = new THREE.MeshStandardMaterial({ color: 0x23262b, roughness: 0.55, metalness: 0.8 });
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0xd9d2c4, roughness: 0.9 });
-  const roofMat = new THREE.MeshStandardMaterial({ color: 0x7a3b2c, roughness: 0.8 });
-  const woodMat = new THREE.MeshStandardMaterial({ color: 0x5b4330, roughness: 0.85 });
-  const postG = new THREE.CylinderGeometry(0.06, 0.09, 3.6, 6).translate(0, 1.8, 0);
+  const glowMat = new THREE.MeshStandardMaterial({
+    color: 0x221a10,
+    emissive: 0xffb45a,
+    emissiveIntensity: 6,
+  });
+  const ironMat = new THREE.MeshStandardMaterial({
+    color: 0x23262b,
+    roughness: 0.55,
+    metalness: 0.8,
+  });
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: 0xd9d2c4,
+    roughness: 0.9,
+  });
+  const roofMat = new THREE.MeshStandardMaterial({
+    color: 0x7a3b2c,
+    roughness: 0.8,
+  });
+  const woodMat = new THREE.MeshStandardMaterial({
+    color: 0x5b4330,
+    roughness: 0.85,
+  });
+  const postG = new THREE.CylinderGeometry(0.06, 0.09, 3.6, 6).translate(
+    0,
+    1.8,
+    0,
+  );
   const bulbG = new THREE.SphereGeometry(0.22, 10, 8).translate(0, 3.7, 0);
   const lampPts: THREE.Vector3[] = [];
   ROADS.forEach((R) => {
@@ -426,16 +542,34 @@ void main(){
   posts.castShadow = true;
   scene.add(posts, bulbs);
 
-  const house = (x: number, z: number, rot: number, w: number, d: number, hh: number) => {
+  const house = (
+    x: number,
+    z: number,
+    rot: number,
+    w: number,
+    d: number,
+    hh: number,
+  ) => {
     const g = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), wallMat);
     body.position.y = hh / 2;
-    const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.01, w * 0.78, 2.2, 4, 1).rotateY(Math.PI / 4), roofMat);
+    const roof = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.01, w * 0.78, 2.2, 4, 1).rotateY(
+        Math.PI / 4,
+      ),
+      roofMat,
+    );
     roof.scale.z = d / w;
     roof.position.y = hh + 1.1;
-    const win = new THREE.Mesh(new THREE.BoxGeometry(w * 0.55, 0.9, d + 0.06), glowMat);
+    const win = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 0.55, 0.9, d + 0.06),
+      glowMat,
+    );
     win.position.y = hh * 0.55;
-    const door = new THREE.Mesh(new THREE.BoxGeometry(w + 0.06, 1.9, 0.9), woodMat);
+    const door = new THREE.Mesh(
+      new THREE.BoxGeometry(w + 0.06, 1.9, 0.9),
+      woodMat,
+    );
     door.position.y = 0.95;
     g.add(body, roof, win, door);
     g.traverse((o) => ((o.castShadow = true), (o.receiveShadow = true)));
@@ -448,12 +582,23 @@ void main(){
     const p = RA[Math.floor(RA.length * (0.78 + 0.011 * i))]!;
     const side = i % 2 ? 1 : -1;
     const off = 11 + (i % 3) * 5;
-    house(p.x + Math.cos(p.heading) * off * side, p.z + Math.sin(p.heading) * off * side, -p.heading + (side > 0 ? 0 : Math.PI), 6 + (i % 3), 5 + (i % 2) * 2, 3.4 + (i % 3) * 0.8);
+    house(
+      p.x + Math.cos(p.heading) * off * side,
+      p.z + Math.sin(p.heading) * off * side,
+      -p.heading + (side > 0 ? 0 : Math.PI),
+      6 + (i % 3),
+      5 + (i % 2) * 2,
+      3.4 + (i % 3) * 0.8,
+    );
   }
-  { // foundry at the summit
+  {
+    // foundry at the summit
     const s = RA[0]!;
     house(s.x - 16, s.z - 6, 0.6, 14, 10, 7);
-    const stack = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.5, 16, 10), new THREE.MeshStandardMaterial({ color: 0x6a4034, roughness: 0.9 }));
+    const stack = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.1, 1.5, 16, 10),
+      new THREE.MeshStandardMaterial({ color: 0x6a4034, roughness: 0.9 }),
+    );
     stack.position.set(s.x - 20, heightAt(s.x - 20, s.z - 10) + 8, s.z - 10);
     stack.castShadow = true;
     scene.add(stack);
@@ -464,12 +609,18 @@ void main(){
     const x = p.x + Math.cos(p.heading) * 26;
     const z = p.z + Math.sin(p.heading) * 26;
     const g = new THREE.Group();
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.95, 34, 10), wallMat);
+    const mast = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, 0.95, 34, 10),
+      wallMat,
+    );
     mast.position.y = 17;
     const hub = new THREE.Group();
     hub.position.set(0, 34, 1.2);
     for (let b = 0; b < 3; b++) {
-      const bl = new THREE.Mesh(new THREE.BoxGeometry(0.9, 15, 0.18).translate(0, 7.5, 0), wallMat);
+      const bl = new THREE.Mesh(
+        new THREE.BoxGeometry(0.9, 15, 0.18).translate(0, 7.5, 0),
+        wallMat,
+      );
       bl.rotation.z = (b * Math.PI * 2) / 3;
       hub.add(bl);
     }
@@ -480,17 +631,29 @@ void main(){
     rotors.push(hub);
     scene.add(g);
   }
-  { // engine tower on the far island
+  {
+    // engine tower on the far island
     const R = ROADS[1]!;
     const e = R[R.length - 1]!;
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(4, 6.5, 30, 14), new THREE.MeshStandardMaterial({ color: 0x8b8478, roughness: 0.85 }));
+    const t = new THREE.Mesh(
+      new THREE.CylinderGeometry(4, 6.5, 30, 14),
+      new THREE.MeshStandardMaterial({ color: 0x8b8478, roughness: 0.85 }),
+    );
     t.position.set(e.x + 12, heightAt(e.x + 12, e.z) + 14, e.z);
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(2.4, 16, 12), new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0x8fd8ff, emissiveIntensity: 9 }));
+    const lamp = new THREE.Mesh(
+      new THREE.SphereGeometry(2.4, 16, 12),
+      new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        emissive: 0x8fd8ff,
+        emissiveIntensity: 9,
+      }),
+    );
     lamp.position.set(e.x + 12, t.position.y + 17, e.z);
     t.castShadow = true;
     scene.add(t, lamp);
   }
-  { // pier planks
+  {
+    // pier planks
     const a = RA[RA.length - 16]!;
     const b = RA[RA.length - 1]!;
     const len = Math.hypot(b.x - a.x, b.z - a.z);
@@ -515,7 +678,12 @@ void main(){
   const rainG = new THREE.BufferGeometry();
   rainG.setAttribute('position', new THREE.BufferAttribute(rp, 3));
   rainG.setAttribute('aEnd', new THREE.BufferAttribute(re, 1));
-  const rainU = { uTime: { value: 0 }, uCam: { value: new THREE.Vector3() }, uRain: { value: 0 }, uWind: { value: new THREE.Vector3() } };
+  const rainU = {
+    uTime: { value: 0 },
+    uCam: { value: new THREE.Vector3() },
+    uRain: { value: 0 },
+    uWind: { value: new THREE.Vector3() },
+  };
   const rain = new THREE.LineSegments(
     rainG,
     new THREE.ShaderMaterial({
@@ -545,19 +713,43 @@ void main(){
   const pG = new THREE.BufferGeometry();
   pG.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
   pG.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
-  const pts = new THREE.Points(pG, new THREE.PointsMaterial({ size: 0.22, vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false }));
+  const pts = new THREE.Points(
+    pG,
+    new THREE.PointsMaterial({
+      size: 0.22,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+    }),
+  );
   pts.frustumCulled = false;
   scene.add(pts);
   let pNext = 0;
-  const KCOL = { spray: [0.9, 0.95, 1], dust: [0.55, 0.47, 0.36], sparks: [6, 3, 0.8] };
+  const KCOL = {
+    spray: [0.9, 0.95, 1],
+    dust: [0.55, 0.47, 0.36],
+    sparks: [6, 3, 0.8],
+  };
 
   /* ---- post ---- */
-  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: Math.min(GRAPHICS[quality].samples, renderer.capabilities.maxSamples) });
+  const rt = new THREE.WebGLRenderTarget(1, 1, {
+    type: THREE.HalfFloatType,
+    samples: Math.min(
+      GRAPHICS[quality].samples,
+      renderer.capabilities.maxSamples,
+    ),
+  });
   const composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(scene, camera));
   const ao = new GTAOPass(scene, camera, 1, 1);
   ao.blendIntensity = 0.48;
-  ao.updateGtaoMaterial({ radius: 1.2, thickness: 0.8, distanceFallOff: 1, samples: quality === 'ultra' ? 16 : 8 });
+  ao.updateGtaoMaterial({
+    radius: 1.2,
+    thickness: 0.8,
+    distanceFallOff: 1,
+    samples: quality === 'ultra' ? 16 : 8,
+  });
   ao.updatePdMaterial({ radius: 4, samples: 8, rings: 2 });
   const renderAO = ao.render.bind(ao);
   // These surfaces displace vertices in custom shaders, so an override normal
@@ -565,15 +757,26 @@ void main(){
   const noAO = [sky, ocean, clouds, grass];
   const aoVisibility = noAO.map(() => true);
   ao.render = (...args: Parameters<GTAOPass['render']>) => {
-    for (let i = 0; i < noAO.length; i++) { aoVisibility[i] = noAO[i]!.visible; noAO[i]!.visible = false; }
-    try { renderAO(...args); }
-    finally { for (let i = 0; i < noAO.length; i++) noAO[i]!.visible = aoVisibility[i]!; }
+    for (let i = 0; i < noAO.length; i++) {
+      aoVisibility[i] = noAO[i]!.visible;
+      noAO[i]!.visible = false;
+    }
+    try {
+      renderAO(...args);
+    } finally {
+      for (let i = 0; i < noAO.length; i++) noAO[i]!.visible = aoVisibility[i]!;
+    }
   };
   composer.addPass(ao);
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.45, 1.3);
   composer.addPass(bloom);
   const grade = new ShaderPass({
-    uniforms: { tDiffuse: { value: null }, uStorm: { value: 0 }, uSpeed: { value: 0 }, uFlash: { value: 0 } },
+    uniforms: {
+      tDiffuse: { value: null },
+      uStorm: { value: 0 },
+      uSpeed: { value: 0 },
+      uFlash: { value: 0 },
+    },
     vertexShader: `varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
     fragmentShader: /* glsl */ `
 uniform sampler2D tDiffuse; uniform float uStorm,uSpeed,uFlash; varying vec2 vUv;
@@ -596,13 +799,18 @@ void main(){
 
   /* ---- state ---- */
   const tmpC = new THREE.Color();
-  const lerpHex = (a: number, b: number, t: number, out: THREE.Color) => out.setHex(a).lerp(tmpC.setHex(b), t);
+  const lerpHex = (a: number, b: number, t: number, out: THREE.Color) =>
+    out.setHex(a).lerp(tmpC.setHex(b), t);
   const windBase = new THREE.Vector2(-0.77, 0.64); // from the north-east
   let flash = 0;
   let flashT = 4;
   // Three r187 renders through WebGL2; the declaration also retains the old GL1 union.
-  const gpuTimer = new GpuTimer(renderer.getContext() as WebGL2RenderingContext);
-  let renderFrame = 0, lastFrame = performance.now(), averageFrameMs = 16.7;
+  const gpuTimer = new GpuTimer(
+    renderer.getContext() as WebGL2RenderingContext,
+  );
+  let renderFrame = 0,
+    lastFrame = performance.now(),
+    averageFrameMs = 16.7;
   const renderSize = new THREE.Vector2();
   const contextLost = () => gpuTimer.clear(true);
   canvas.addEventListener('webglcontextlost', contextLost);
@@ -620,24 +828,46 @@ void main(){
       if (next === quality) return;
       quality = next;
       world.quality = next;
-      try { localStorage.setItem('cg-graphics', next); } catch { /* Storage can be disabled. */ }
+      try {
+        localStorage.setItem('cg-graphics', next);
+      } catch {
+        /* Storage can be disabled. */
+      }
       const settings = GRAPHICS[next];
-      const geometry = new THREE.PlaneGeometry(2, 2, settings.ocean, settings.ocean);
+      const geometry = new THREE.PlaneGeometry(
+        2,
+        2,
+        settings.ocean,
+        settings.ocean,
+      );
       geometry.rotateX(-Math.PI / 2);
-      ocean.geometry.dispose(); ocean.geometry = geometry;
+      ocean.geometry.dispose();
+      ocean.geometry = geometry;
       ig.instanceCount = settings.grass;
       cloudU.uSteps.value = settings.cloudSteps;
-      sun.shadow.mapSize.setScalar(Math.min(settings.shadow, renderer.capabilities.maxTextureSize));
-      sun.shadow.map?.dispose(); sun.shadow.map = null;
+      sun.shadow.mapSize.setScalar(
+        Math.min(settings.shadow, renderer.capabilities.maxTextureSize),
+      );
+      sun.shadow.map?.dispose();
+      sun.shadow.map = null;
       sun.shadow.needsUpdate = true;
-      composer.renderTarget1.samples = composer.renderTarget2.samples = Math.min(settings.samples, renderer.capabilities.maxSamples);
-      composer.renderTarget1.dispose(); composer.renderTarget2.dispose();
+      composer.renderTarget1.samples = composer.renderTarget2.samples =
+        Math.min(settings.samples, renderer.capabilities.maxSamples);
+      composer.renderTarget1.dispose();
+      composer.renderTarget2.dispose();
       ao.updateGtaoMaterial({ samples: next === 'ultra' ? 16 : 8 });
       world.resize();
     },
     graphicsStats() {
       renderer.getDrawingBufferSize(renderSize);
-      return { fps: 1000 / averageFrameMs, gpuMs: gpuTimer.latest?.totalMs ?? null, width: renderSize.x, height: renderSize.y, triangles: renderer.info.render.triangles, calls: renderer.info.render.calls };
+      return {
+        fps: 1000 / averageFrameMs,
+        gpuMs: gpuTimer.latest?.totalMs ?? null,
+        width: renderSize.x,
+        height: renderSize.y,
+        triangles: renderer.info.render.triangles,
+        calls: renderer.info.render.calls,
+      };
     },
     heightAt,
     roadNearest,
@@ -647,17 +877,36 @@ void main(){
       for (const w of WAVES) {
         const k = 6.2831853 / w.l;
         const len = Math.hypot(w.d[0]!, w.d[1]!);
-        y += w.a * oceanU.uSea.value * Math.sin((k * (w.d[0]! * x + w.d[1]! * z)) / len - Math.sqrt(9.81 * k) * world.time);
+        y +=
+          w.a *
+          oceanU.uSea.value *
+          Math.sin(
+            (k * (w.d[0]! * x + w.d[1]! * z)) / len -
+              Math.sqrt(9.81 * k) * world.time,
+          );
       }
       return y;
     },
     windAt(x, z, out) {
       const sp = 5 + 12 * world.storm;
-      const g = 0.75 + 0.5 * fbm((x - windBase.x * world.time * sp) / 120, (z - windBase.y * world.time * sp) / 120, 2) + 0.35 * world.storm * Math.sin(world.time * 0.6 + x * 0.01);
-      const veer = x > 950 ? -0.45 * THREE.MathUtils.smoothstep(x, 950, 1150) : 0;
+      const g =
+        0.75 +
+        0.5 *
+          fbm(
+            (x - windBase.x * world.time * sp) / 120,
+            (z - windBase.y * world.time * sp) / 120,
+            2,
+          ) +
+        0.35 * world.storm * Math.sin(world.time * 0.6 + x * 0.01);
+      const veer =
+        x > 950 ? -0.45 * THREE.MathUtils.smoothstep(x, 950, 1150) : 0;
       const cx = Math.cos(veer);
       const sx = Math.sin(veer);
-      out.set((windBase.x * cx - windBase.y * sx) * sp * g, 0, (windBase.x * sx + windBase.y * cx) * sp * g);
+      out.set(
+        (windBase.x * cx - windBase.y * sx) * sp * g,
+        0,
+        (windBase.x * sx + windBase.y * cx) * sp * g,
+      );
       return out;
     },
     burst(kind, pos, vel, count) {
@@ -666,7 +915,14 @@ void main(){
         const k = pNext++ % PN;
         pPos.set([pos.x, pos.y, pos.z], k * 3);
         const s = kind === 'sparks' ? 5 : 2.2;
-        pVel.set([vel.x + (Math.random() - 0.5) * s, vel.y + Math.random() * s, vel.z + (Math.random() - 0.5) * s], k * 3);
+        pVel.set(
+          [
+            vel.x + (Math.random() - 0.5) * s,
+            vel.y + Math.random() * s,
+            vel.z + (Math.random() - 0.5) * s,
+          ],
+          k * 3,
+        );
         pLife[k] = 0.6 + Math.random() * 0.9;
         pCol.set(c, k * 3);
       }
@@ -682,18 +938,33 @@ void main(){
       const s = world.storm;
       world.wet += ((s > 0.5 ? 1 : 0) - world.wet) * Math.min(1, dt * 0.05);
       // sun: golden and low, sinking as the storm builds; clean dawn when calm
-      const el = THREE.MathUtils.degToRad(THREE.MathUtils.lerp(26, -3, THREE.MathUtils.smoothstep(s, 0.05, 0.95)));
+      const el = THREE.MathUtils.degToRad(
+        THREE.MathUtils.lerp(26, -3, THREE.MathUtils.smoothstep(s, 0.05, 0.95)),
+      );
       const az = THREE.MathUtils.degToRad(250);
-      sunDir.set(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).normalize();
+      sunDir
+        .set(
+          Math.sin(az) * Math.cos(el),
+          Math.sin(el),
+          -Math.cos(az) * Math.cos(el),
+        )
+        .normalize();
       skyU['sunPosition']!.value.copy(sunDir);
       skyU['turbidity']!.value = 2.5 + 14 * s;
       skyU['rayleigh']!.value = 1.5 - 1.0 * s;
       skyU['mieCoefficient']!.value = 0.006 + 0.02 * s;
       skyU['mieDirectionalG']!.value = 0.86;
       if (Math.abs(s - environmentStorm) > 0.08) {
-        const nextEnvironment = pmrem.fromScene(environmentScene, 0.04, 0.1, 20000, { size: 256 });
+        const nextEnvironment = pmrem.fromScene(
+          environmentScene,
+          0.04,
+          0.1,
+          20000,
+          { size: 256 },
+        );
         scene.environment = nextEnvironment.texture;
-        environmentTarget?.dispose(); environmentTarget = nextEnvironment;
+        environmentTarget?.dispose();
+        environmentTarget = nextEnvironment;
         environmentStorm = s;
       }
       const day = THREE.MathUtils.smoothstep(sunDir.y, -0.06, 0.2);
@@ -710,7 +981,12 @@ void main(){
       sun.intensity = 5.2 * day * (1 - 0.82 * s) + 0.05;
       hemi.intensity = 0.55 + 1.0 * day * (1 - 0.55 * s) + fl * 3;
       lerpHex(0xbfd8ff, 0x55606c, s, hemi.color);
-      const fogC = lerpHex(0x8fa9c0, 0x2a323b, Math.max(s, 1 - day), new THREE.Color()).multiplyScalar(0.35 + 0.65 * day + fl);
+      const fogC = lerpHex(
+        0x8fa9c0,
+        0x2a323b,
+        Math.max(s, 1 - day),
+        new THREE.Color(),
+      ).multiplyScalar(0.35 + 0.65 * day + fl);
       (scene.fog as THREE.FogExp2).color.copy(fogC);
       const fd = 0.0003 + 0.0012 * s;
       (scene.fog as THREE.FogExp2).density = fd;
@@ -723,18 +999,27 @@ void main(){
       oceanU.uSea.value = 0.45 + 2.0 * s;
       oceanU.uCam.value.copy(cp);
       oceanU.uSunCol.value.copy(lit).multiplyScalar(3);
-      lerpHex(0xc8d8e2, 0x39424c, s, oceanU.uHorizon.value).multiplyScalar(0.3 + 0.7 * day + fl);
-      lerpHex(0x3f74b8, 0x1b2026, s, oceanU.uZenith.value).multiplyScalar(0.3 + 0.7 * day + fl);
-      lerpHex(0x06283a, 0x04090d, s, oceanU.uDeep.value).multiplyScalar(0.4 + 0.6 * day);
+      lerpHex(0xc8d8e2, 0x39424c, s, oceanU.uHorizon.value).multiplyScalar(
+        0.3 + 0.7 * day + fl,
+      );
+      lerpHex(0x3f74b8, 0x1b2026, s, oceanU.uZenith.value).multiplyScalar(
+        0.3 + 0.7 * day + fl,
+      );
+      lerpHex(0x06283a, 0x04090d, s, oceanU.uDeep.value).multiplyScalar(
+        0.4 + 0.6 * day,
+      );
       oceanU.uFog.value.copy(fogC);
       oceanU.uFogD.value = fd;
       oceanU.uFoam.value = 0.15 + 0.85 * s;
       // clouds
       cloudU.uTime.value = world.time * (1 + 3 * s);
-      cloudU.uCover.value = 0.32 + 0.68 * THREE.MathUtils.smoothstep(s, 0.1, 0.8);
+      cloudU.uCover.value =
+        0.32 + 0.68 * THREE.MathUtils.smoothstep(s, 0.1, 0.8);
       cloudU.uCam.value.copy(cp);
       cloudU.uSunCol.value.copy(lit).multiplyScalar(0.55);
-      lerpHex(0x9aa7b5, 0x15191e, s, cloudU.uDark.value).multiplyScalar(0.3 + 0.7 * day);
+      lerpHex(0x9aa7b5, 0x15191e, s, cloudU.uDark.value).multiplyScalar(
+        0.3 + 0.7 * day,
+      );
       cloudU.uFlash.value = fl;
       clouds.position.x = cp.x;
       clouds.position.z = cp.z;
@@ -757,7 +1042,9 @@ void main(){
       rainU.uCam.value.copy(cp);
       rainU.uRain.value = THREE.MathUtils.smoothstep(s, 0.42, 0.8);
       rainU.uWind.value.copy(w);
-      rotors.forEach((r, i) => (r.rotation.z += dt * (0.3 + ws * 0.12) * (1 + i * 0.03)));
+      rotors.forEach(
+        (r, i) => (r.rotation.z += dt * (0.3 + ws * 0.12) * (1 + i * 0.03)),
+      );
       glowMat.emissiveIntensity = 0.3 + 8 * Math.max(s, 1 - day);
       terrainMat.roughness = 0.95 - 0.45 * world.wet;
       // particles
@@ -780,30 +1067,65 @@ void main(){
     },
     render() {
       const now = performance.now();
-      const elapsed = now - lastFrame; lastFrame = now;
-      if (elapsed > 0 && elapsed < 1000) averageFrameMs += (elapsed - averageFrameMs) * 0.08;
+      const elapsed = now - lastFrame;
+      lastFrame = now;
+      if (elapsed > 0 && elapsed < 1000)
+        averageFrameMs += (elapsed - averageFrameMs) * 0.08;
       renderer.info.reset();
-      gpuTimer.beginFrame(renderFrame++); gpuTimer.begin('graphics');
+      gpuTimer.beginFrame(renderFrame++);
+      gpuTimer.begin('graphics');
       try {
-        scene.updateMatrixWorld(); camera.updateMatrixWorld();
+        scene.updateMatrixWorld();
+        camera.updateMatrixWorld();
         ocean.visible = false;
         try {
-          reflection.onBeforeRender(renderer, scene, camera, reflection.geometry, reflectionMaterial, null!);
-          reflectionMatrix.copy(reflectionMaterial.uniforms['textureMatrix']!.value as THREE.Matrix4).multiply(reflectionInverse);
-        } finally { ocean.visible = true; }
+          reflection.onBeforeRender(
+            renderer,
+            scene,
+            camera,
+            reflection.geometry,
+            reflectionMaterial,
+            null!,
+          );
+          reflectionMatrix
+            .copy(
+              reflectionMaterial.uniforms['textureMatrix']!
+                .value as THREE.Matrix4,
+            )
+            .multiply(reflectionInverse);
+        } finally {
+          ocean.visible = true;
+        }
         composer.render();
-      } finally { gpuTimer.endFrame(); }
+      } finally {
+        gpuTimer.endFrame();
+      }
     },
     resize() {
       const w = canvas.clientWidth || window.innerWidth;
       const h = canvas.clientHeight || window.innerHeight;
-      const ratio = graphicsRatio(w, h, window.devicePixelRatio || 1, quality, renderer.capabilities.maxTextureSize);
+      const ratio = graphicsRatio(
+        w,
+        h,
+        window.devicePixelRatio || 1,
+        quality,
+        renderer.capabilities.maxTextureSize,
+      );
       renderer.setPixelRatio(ratio);
       renderer.setSize(w, h, false);
       composer.setPixelRatio(ratio);
       composer.setSize(w, h);
-      const reflectionSize = Math.min(GRAPHICS[quality].reflection, renderer.capabilities.maxTextureSize, Math.max(w, h) * ratio);
-      reflection.getRenderTarget().setSize(Math.max(1, Math.floor(reflectionSize * w / Math.max(w, h))), Math.max(1, Math.floor(reflectionSize * h / Math.max(w, h))));
+      const reflectionSize = Math.min(
+        GRAPHICS[quality].reflection,
+        renderer.capabilities.maxTextureSize,
+        Math.max(w, h) * ratio,
+      );
+      reflection
+        .getRenderTarget()
+        .setSize(
+          Math.max(1, Math.floor((reflectionSize * w) / Math.max(w, h))),
+          Math.max(1, Math.floor((reflectionSize * h) / Math.max(w, h))),
+        );
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     },
@@ -813,8 +1135,16 @@ void main(){
   window.addEventListener('resize', world.resize);
   window.addEventListener('pagehide', (event) => {
     if (event.persisted) return;
-    gpuTimer.clear(); pmrem.dispose(); environmentTarget?.dispose(); environmentSky.material.dispose();
-    reflection.dispose(); reflection.geometry.dispose(); ao.dispose(); bloom.dispose(); grade.dispose(); composer.dispose();
+    gpuTimer.clear();
+    pmrem.dispose();
+    environmentTarget?.dispose();
+    environmentSky.material.dispose();
+    reflection.dispose();
+    reflection.geometry.dispose();
+    ao.dispose();
+    bloom.dispose();
+    grade.dispose();
+    composer.dispose();
     window.removeEventListener('resize', world.resize);
     canvas.removeEventListener('webglcontextlost', contextLost);
   });
