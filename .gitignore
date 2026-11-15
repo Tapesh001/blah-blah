@@ -2,3 +2,5 @@ node_modules/
 dist/
 .local/
 *.log
+playwright-report/
+test-results/
