@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Tapesh · HDR frame pipeline</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #081019; color: #d5e1e5; font: 14px/1.5 system-ui, sans-serif; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    aside { position: fixed; left: 28px; top: 24px; max-width: 330px; padding: 20px; background: #091421db; border: 1px solid #5f72794d; }
+    .eyebrow { font-size: 11px; letter-spacing: .16em; color: #edba79; }
+    h1 { margin: 10px 0; font-size: 25px; font-weight: 500; }
+    p { color: #9eb5c0; font-size: 12px; }
+    select { color: #d5e1e5; background: #162732; border: 1px solid #5f7279; padding: 5px; margin-left: 8px; }
+    #passes { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 16px; font-size: 12px; }
+    input { accent-color: #edba79; }
+    footer { position: fixed; bottom: 22px; left: 28px; color: #bdced5; font-size: 11px; letter-spacing: .08em; }
+    #error { white-space: pre-wrap; color: #ffaca1; }
+    @media (max-width: 700px) { aside { top: auto; bottom: 12px; left: 12px; padding: 12px; } footer { display: none; } }
+  </style>
+</head>
+<body>
+  <canvas id="view" aria-label="Static harbour geometry testing the HDR rendering pipeline"></canvas>
+  <aside>
+    <div class="eyebrow">TAPESH / GRAPHICS LAB / T0.1</div>
+    <h1>A frame, from light to screen.</h1>
+    <p>Static procedural fixtures. Opaque geometry, sky, water-stage geometry and transparent glass share one HDR frame.</p>
+    <label for="scale">Render scale</label><select id="scale"><option value="0.5">50%</option><option value="0.75" selected>75%</option><option value="1">100%</option></select>
+    <div id="passes"></div>
+    <p>GPU timings appear with <code>?perf=1</code>. Water and sky are test fixtures; no simulation is running.</p>
+    <div id="error" role="alert"></div>
+  </aside>
+  <footer>RGBA16F + DEPTH → ORDERED PASSES → POST → sRGB</footer>
+  <script type="module" src="/src/gfx/sandbox.js"></script>
+</body>
+</html>
