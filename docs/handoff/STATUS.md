@@ -1,6 +1,7 @@
 # Integration status
 
-M0 implementation is ready on `shobhit/m0-foundation`; remote CI is pending.
+M0 landed in `f136059461e14ecac93e20863463c0c2e617d550` on `main`.
+The implementation is also available on `shobhit/m0-foundation`.
 
 ## Scope and provenance
 
@@ -58,4 +59,6 @@ are retained; this milestone produces a deployable `dist/` artifact.
   A footer/action overlap was corrected and covered by a browser assertion.
 - Vite reports a non-fatal 545.5 kB shared Three.js/runtime chunk warning
   (approximately 137.4 kB gzip). Chunk splitting/loading optimization is deferred.
-- GitHub Actions results and the landing commit will be recorded after push.
+- Both GitHub Actions jobs (`check` and `browser`) passed on the implementation
+  commit: [Verify run 43696796643](https://github.com/Tapesh001/blah-blah/actions/runs/43696796643).
+  The Linux browser job reports all 11 tests passing.
