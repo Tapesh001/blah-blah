@@ -86,11 +86,17 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
 
   /* ---- sky + lights ---- */
   const sky = new Sky();
+  // Bound the solar disc's HDR radiance so bloom cannot turn it into a large
+  // white patch. Keep atmospheric light and overall scene exposure intact.
+  sky.material.fragmentShader = sky.material.fragmentShader.replace(
+    '( 760.0 * sundisc ) * min( vSunE * Fex, 80.0 )',
+    'sundisc * min( vSunE * Fex * 0.06, vec3( 3.0 ) )',
+  );
   sky.scale.setScalar(12000);
   scene.add(sky);
   const skyU = sky.material.uniforms;
   const sunDir = new THREE.Vector3();
-  const sun = new THREE.DirectionalLight(0xffe2b8, 3);
+  const sun = new THREE.DirectionalLight(0xffe2b8, 2.5);
   sun.castShadow = true;
   sun.shadow.mapSize.setScalar(
     Math.min(GRAPHICS[quality].shadow, renderer.capabilities.maxTextureSize),
@@ -225,7 +231,7 @@ void main(){
  float reflectionEdge=smoothstep(0.,0.06,reflectionUV.x)*smoothstep(0.,0.06,reflectionUV.y)*(1.-smoothstep(0.94,1.,reflectionUV.x))*(1.-smoothstep(0.94,1.,reflectionUV.y))*step(0.,projected.w);
  vec3 reflected=min(texture2D(uReflection,clamp(reflectionUV,vec2(0.002),vec2(0.998))).rgb,vec3(8.));
  skyc=mix(skyc,reflected,reflectionEdge*0.88);
- float sp=pow(max(dot(R,uSun),0.),380.)*2.5+pow(max(dot(R,uSun),0.),24.)*0.15;
+ float sp=pow(max(dot(R,uSun),0.),380.)*1.1+pow(max(dot(R,uSun),0.),24.)*0.07;
  vec3 scatter=vec3(0.015,0.18,0.16)*max(0.,vCrest+0.15)*(0.35+0.65*max(dot(uSun,vec3(0,1,0)),0.))*1.3;
  vec3 col=mix(uDeep+scatter,skyc,F)+uSunCol*sp;
  vec2 uvA=(q-uGridA.xy)/uGridA.z, uvB=(q-uGridB.xy)/uGridB.z;
@@ -975,8 +981,8 @@ void main(){
       skyU['sunPosition']!.value.copy(sunDir);
       skyU['turbidity']!.value = 2 + 14 * s;
       skyU['rayleigh']!.value = 1.5 - 1.0 * s;
-      skyU['mieCoefficient']!.value = 0.006 + 0.02 * s;
-      skyU['mieDirectionalG']!.value = 0.86;
+      skyU['mieCoefficient']!.value = 0.0035 + 0.02 * s;
+      skyU['mieDirectionalG']!.value = 0.78;
       if (Math.abs(s - environmentStorm) > 0.08) {
         const nextEnvironment = pmrem.fromScene(
           environmentScene,
@@ -1001,7 +1007,7 @@ void main(){
       const fl = flash * (0.6 + 0.4 * Math.sin(world.time * 60));
       const sunCol = lerpHex(0xffe4c2, 0xffb27e, 1 - day, new THREE.Color());
       sun.color.copy(sunCol);
-      sun.intensity = 4.0 * day * (1 - 0.82 * s) + 0.05;
+      sun.intensity = 2.5 * day * (1 - 0.82 * s) + 0.05;
       hemi.intensity = 0.4 + 0.65 * day * (1 - 0.55 * s) + fl * 3;
       lerpHex(0xbfd8ff, 0x55606c, s, hemi.color);
       const fogC = lerpHex(
@@ -1021,7 +1027,7 @@ void main(){
       oceanU.uTime.value = world.time;
       oceanU.uSea.value = 0.35 + 1.7 * s * s;
       oceanU.uCam.value.copy(cp);
-      oceanU.uSunCol.value.copy(lit).multiplyScalar(3);
+      oceanU.uSunCol.value.copy(lit).multiplyScalar(1.4);
       lerpHex(0xc8d8e2, 0x39424c, s, oceanU.uHorizon.value).multiplyScalar(
         0.3 + 0.7 * day + fl,
       );
