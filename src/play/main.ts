@@ -3,8 +3,10 @@ import type { GameMode, Hud, Input } from './api';
 import { createWorld } from './world/world';
 
 const canvas = document.createElement('canvas');
+canvas.tabIndex = 0;
+canvas.setAttribute('aria-label', 'Game view');
 canvas.style.cssText =
-  'position:fixed;inset:0;width:100vw;height:100vh;display:block';
+  'position:fixed;inset:0;width:100vw;height:100vh;display:block;outline:none';
 document.body.style.cssText =
   'margin:0;overflow:hidden;background:#000;font-family:system-ui,sans-serif';
 document.body.append(canvas);
@@ -60,10 +62,11 @@ canvas.addEventListener('pointermove', (e) => {
     ly += e.movementY * 0.0025;
   }
 });
-canvas.addEventListener(
-  'pointerdown',
-  () => ((ptr.down = true), (ptr.pressed = true)),
-);
+canvas.addEventListener('pointerdown', () => {
+  canvas.focus({ preventScroll: true });
+  ptr.down = true;
+  ptr.pressed = true;
+});
 addEventListener(
   'pointerup',
   () => ((ptr.down = false), (ptr.released = true)),

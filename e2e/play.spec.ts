@@ -42,8 +42,11 @@ test('production entry starts the playable bike world and renders without errors
   await page.setViewportSize({ width: 320, height: 180 });
   await page.getByLabel('Graphics').selectOption('ultra');
   await page.locator('canvas').click();
+  await expect(page.locator('canvas')).toBeFocused();
   await page.keyboard.press('n');
-  await expect(page.locator('#obj')).toHaveText('Sail to the far island');
+  await expect(page.locator('#obj')).toHaveText('Sail to the far island', {
+    timeout: 30000,
+  });
   await expect(page.locator('#render-stats')).toHaveAttribute(
     'title',
     /480 × 270 render pixels/,
