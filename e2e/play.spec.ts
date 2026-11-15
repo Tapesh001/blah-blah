@@ -5,7 +5,7 @@ test('production entry starts the playable bike world and renders without errors
 }, testInfo) => {
   // CI uses software WebGL. Exercise the real High preset at a small viewport;
   // do not disable effects or substitute the M0 stub renderer for the real game.
-  test.setTimeout(90000);
+  test.setTimeout(180000);
   await page.setViewportSize({ width: 480, height: 270 });
   await page.addInitScript(() => localStorage.setItem('cg-graphics', 'high'));
   const errors: string[] = [];
@@ -53,6 +53,14 @@ test('production entry starts the playable bike world and renders without errors
   );
   await page.keyboard.press('v');
   await expect(page.locator('#gauges')).toContainText('trim');
+  // The real Ultra frame has rendered. Stop scheduling more GPU work while
+  // SwiftShader reads it back; continuous rendering can starve capture in CI.
+  await page.evaluate(() => {
+    const runtime = window as unknown as {
+      renderer: { setAnimationLoop(callback: null): void };
+    };
+    runtime.renderer.setAnimationLoop(null);
+  });
   await page.screenshot({ path: testInfo.outputPath('ultra-sailing.png') });
   expect(errors).toEqual([]);
 });
