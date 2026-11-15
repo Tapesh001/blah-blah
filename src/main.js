@@ -55,7 +55,7 @@ function handleKey(e,down){
  const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k)&&started&&!isPaused())e.preventDefault();
  if(!down){keys[k]=false;return;}if(e.repeat){keys[k]=true;return;}
  if(isPaused())return;
- if(k==='escape'&&started){showDialog('pause-dialog');return;}if(k==='m'){openMap();return;}if(!started)return;
+ if(k==='escape'&&started){e.preventDefault();showDialog('pause-dialog');return;}if(k==='m'){openMap();return;}if(!started)return;
  if(k==='v'&&!state.onFoot){state.firstPerson=!state.firstPerson;look=0;updateView();}
  if(k==='r'&&state.chapter==='sail'&&!state.onFoot){openWinch();return;}
  if(k==='e'&&(state.chapter==='ride'||interaction==='dock')){interact();return;}

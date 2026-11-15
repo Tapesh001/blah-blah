@@ -75,5 +75,8 @@ This combines the requested mechanics into a new two-chapter game. It does not r
 
 - Five automated tests passed, including a complete state-transition campaign and upstream terrain samples.
 - Vite production build passed; local server returned HTTP 200.
-- Visual/browser playtesting remains unverified: browser control became unavailable, and Computer Use stopped because Firefox cannot enforce its required URL policy. No screenshot or visual-parity claim is made.
+- Brave visual checks confirmed the 3D village renders, the wrong repair gear is rejected, excessive chain tension is rejected, and a 24T idler with 63% tension completes repair and returns to riding.
+- An Escape pause issue was found during browser testing and fixed by suppressing the key's default dialog dismissal. The fix still needs a browser recheck. Sailing, the ending and a full campaign playthrough remain unverified in-browser.
 - Full REA evidence and research are outside this deployable project under `../references/`. The 111 MB Evidence JSON is excluded from deployment.
+
+The original build plan and compact reference reports are included in `docs/`.
