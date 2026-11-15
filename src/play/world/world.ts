@@ -35,7 +35,7 @@ const NOISE_GLSL = /* glsl */ `
 float hash21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
  return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+vec2(1,1)),f.x),f.y);}
-float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*vn(p);p=p*2.03+17.;a*=.5;}return s;}
+float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<3;i++){s+=a*vn(p);p=p*2.03+17.;a*=.5;}return s;}
 `;
 
 export interface WorldHandle extends World {
@@ -49,11 +49,11 @@ export interface WorldHandle extends World {
 
 export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.62;
+  renderer.toneMappingExposure = 0.5;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 14000);
@@ -76,7 +76,7 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.6;
   scene.add(sun, sun.target);
-  const hemi = new THREE.HemisphereLight(0xbfd8ff, 0x4a4234, 1);
+  const hemi = new THREE.HemisphereLight(0xbfd8ff, 0x7a705c, 1);
   scene.add(hemi);
 
   /* ---- terrain ---- */
@@ -201,12 +201,12 @@ void main(){
 
   /* ---- grass (camera-following instanced tile) ---- */
   const TILE = 110;
-  const BLADES = 150000;
+  const BLADES = 110000;
   const blade = new THREE.BufferGeometry();
   blade.setAttribute(
     'position',
     new THREE.Float32BufferAttribute(
-      [-0.045, 0, 0, 0.045, 0, 0, -0.03, 0.5, 0, 0.045, 0, 0, 0.03, 0.5, 0, -0.03, 0.5, 0, -0.03, 0.5, 0, 0.03, 0.5, 0, 0, 1, 0],
+      [-0.09, 0, 0, 0.09, 0, 0, -0.06, 0.5, 0, 0.09, 0, 0, 0.06, 0.5, 0, -0.06, 0.5, 0, -0.06, 0.5, 0, 0.06, 0.5, 0, 0, 1, 0],
       3,
     ),
   );
@@ -262,7 +262,7 @@ void main(){
       fragmentShader: /* glsl */ `
 uniform vec3 uSunCol,uAmb,uFog; uniform float uFogD; varying float vT; varying float vR; varying float vD; varying float vG;
 void main(){
- vec3 a=mix(vec3(0.05,0.13,0.03),vec3(0.16,0.27,0.06),vR);
+ vec3 a=mix(vec3(0.10,0.22,0.05),vec3(0.24,0.36,0.09),vR);
  vec3 b=mix(vec3(0.42,0.55,0.16),vec3(0.62,0.6,0.22),vR);
  vec3 alb=mix(a,b,vT*vT)+vec3(0.12,0.13,0.05)*vG*vT;
  vec3 col=alb*(uAmb*0.9+uSunCol*(0.35+0.65*vT));
@@ -487,7 +487,7 @@ void main(){
   const KCOL = { spray: [0.9, 0.95, 1], dust: [0.55, 0.47, 0.36], sparks: [6, 3, 0.8] };
 
   /* ---- post ---- */
-  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 2 });
   const composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.5, 0.75, 0.9);
@@ -576,8 +576,8 @@ void main(){
       const az = THREE.MathUtils.degToRad(250);
       sunDir.set(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).normalize();
       skyU['sunPosition']!.value.copy(sunDir);
-      skyU['turbidity']!.value = 4 + 14 * s;
-      skyU['rayleigh']!.value = 2.2 - 1.6 * s;
+      skyU['turbidity']!.value = 2.5 + 14 * s;
+      skyU['rayleigh']!.value = 1.5 - 1.0 * s;
       skyU['mieCoefficient']!.value = 0.006 + 0.02 * s;
       skyU['mieDirectionalG']!.value = 0.86;
       const day = THREE.MathUtils.smoothstep(sunDir.y, -0.06, 0.2);
@@ -591,17 +591,17 @@ void main(){
       const fl = flash * (0.6 + 0.4 * Math.sin(world.time * 60));
       const sunCol = lerpHex(0xffc98a, 0xff9a5a, 1 - day, new THREE.Color());
       sun.color.copy(sunCol);
-      sun.intensity = 3.4 * day * (1 - 0.82 * s) + 0.05;
-      hemi.intensity = 0.6 + 0.9 * day * (1 - 0.55 * s) + fl * 3;
+      sun.intensity = 5.2 * day * (1 - 0.82 * s) + 0.05;
+      hemi.intensity = 0.55 + 1.0 * day * (1 - 0.55 * s) + fl * 3;
       lerpHex(0xbfd8ff, 0x55606c, s, hemi.color);
-      const fogC = lerpHex(0xa9bccb, 0x2a323b, Math.max(s, 1 - day), new THREE.Color()).multiplyScalar(0.35 + 0.65 * day + fl);
+      const fogC = lerpHex(0x8fa9c0, 0x2a323b, Math.max(s, 1 - day), new THREE.Color()).multiplyScalar(0.35 + 0.65 * day + fl);
       (scene.fog as THREE.FogExp2).color.copy(fogC);
-      const fd = 0.00045 + 0.0011 * s;
+      const fd = 0.0003 + 0.0012 * s;
       (scene.fog as THREE.FogExp2).density = fd;
       const cp = camera.position;
       sun.position.copy(cp).addScaledVector(sunDir, 300);
       sun.target.position.copy(cp);
-      const lit = sunCol.clone().multiplyScalar(sun.intensity * 0.33);
+      const lit = sunCol.clone().multiplyScalar(sun.intensity * 0.3);
       // ocean
       oceanU.uTime.value = world.time;
       oceanU.uSea.value = 0.45 + 2.0 * s;
@@ -617,7 +617,7 @@ void main(){
       cloudU.uTime.value = world.time * (1 + 3 * s);
       cloudU.uCover.value = 0.32 + 0.68 * THREE.MathUtils.smoothstep(s, 0.1, 0.8);
       cloudU.uCam.value.copy(cp);
-      cloudU.uSunCol.value.copy(lit).multiplyScalar(1.6);
+      cloudU.uSunCol.value.copy(lit).multiplyScalar(0.55);
       lerpHex(0x9aa7b5, 0x15191e, s, cloudU.uDark.value).multiplyScalar(0.3 + 0.7 * day);
       cloudU.uFlash.value = fl;
       clouds.position.x = cp.x;
@@ -656,7 +656,7 @@ void main(){
       }
       pG.attributes.position!.needsUpdate = true;
       pG.attributes.color!.needsUpdate = true;
-      renderer.toneMappingExposure = 0.62 + 0.5 * (1 - day) * (1 - s * 0.3);
+      renderer.toneMappingExposure = 0.5 + 0.55 * (1 - day) * (1 - s * 0.3);
       grade.uniforms['uStorm']!.value = s;
       grade.uniforms['uSpeed']!.value = world.speedFx;
       grade.uniforms['uFlash']!.value = fl * 0.25;
