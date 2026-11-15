@@ -5,7 +5,11 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GpuTimer } from '../../gfx/frame-tools.js';
+import { GRAPHICS, savedGraphics, graphicsRatio, detailTerrain, type GraphicsQuality } from './graphics';
 import type { World } from '../api';
 import {
   GRID_A,
@@ -45,13 +49,17 @@ export interface WorldHandle extends World {
   resize(): void;
   /** 0..1 flash for speed blur etc. */
   speedFx: number;
+  quality: GraphicsQuality;
+  setQuality(quality: GraphicsQuality): void;
+  graphicsStats(): { fps: number; gpuMs: number | null; width: number; height: number; triangles: number; calls: number };
 }
 
 export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
+  let quality = savedGraphics();
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.info.autoReset = false;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.5;
 
@@ -67,23 +75,47 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
   const sunDir = new THREE.Vector3();
   const sun = new THREE.DirectionalLight(0xffe2b8, 3);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.setScalar(Math.min(GRAPHICS[quality].shadow, renderer.capabilities.maxTextureSize));
   const sc = sun.shadow.camera;
   sc.near = 1;
   sc.far = 600;
-  sc.left = sc.bottom = -90;
-  sc.right = sc.top = 90;
+  sc.left = sc.bottom = -65;
+  sc.right = sc.top = 65;
   sun.shadow.bias = -0.0004;
-  sun.shadow.normalBias = 0.6;
+  sun.shadow.normalBias = 0.055;
   scene.add(sun, sun.target);
   const hemi = new THREE.HemisphereLight(0xbfd8ff, 0x7a705c, 1);
   scene.add(hemi);
 
   /* ---- terrain ---- */
   const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+  detailTerrain(terrainMat);
   scene.add(buildTerrainMesh(GRID_A, terrainMat), buildTerrainMesh(GRID_B, terrainMat));
   const hTexA = buildHeightTexture(GRID_A);
   const hTexB = buildHeightTexture(GRID_B);
+
+  const environmentScene = new THREE.Scene();
+  const environmentSky = sky.clone();
+  environmentSky.material = sky.material.clone();
+  environmentSky.material.uniforms = sky.material.uniforms;
+  // Direct sunlight is supplied by the shadowed directional light. Bound the
+  // solar disc in the environment capture to avoid duplicate specular energy.
+  environmentSky.material.fragmentShader = environmentSky.material.fragmentShader.replace(
+    'gl_FragColor = vec4( texColor, 1.0 );',
+    'gl_FragColor = vec4( min(texColor, vec3(2.0)), 1.0 );',
+  );
+  environmentScene.add(environmentSky);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  let environmentTarget: THREE.WebGLRenderTarget | null = null;
+  let environmentStorm = -1;
+  scene.environmentIntensity = 0.4;
+  const reflection = new Reflector(new THREE.PlaneGeometry(2, 2), { textureWidth: 512, textureHeight: 512, clipBias: 0.004, multisample: 0 });
+  reflection.rotation.x = -Math.PI / 2;
+  reflection.updateMatrixWorld(true);
+  const reflectionMaterial = reflection.material as THREE.ShaderMaterial;
+  // Reflector's matrix consumes its plane-local position; the ocean uses world positions.
+  const reflectionMatrix = new THREE.Matrix4();
+  const reflectionInverse = reflection.matrixWorld.clone().invert();
 
   /* ---- ocean ---- */
   const oceanU = {
@@ -98,11 +130,16 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
     uFog: { value: new THREE.Color() },
     uFogD: { value: 0.0006 },
     uFoam: { value: 0.2 },
+    uReflection: reflectionMaterial.uniforms['tDiffuse']!,
+    uReflectionMatrix: { value: reflectionMatrix },
+    uHeightA: { value: hTexA }, uHeightB: { value: hTexB },
+    uGridA: { value: new THREE.Vector3(GRID_A.ox, GRID_A.oz, GRID_A.size) },
+    uGridB: { value: new THREE.Vector3(GRID_B.ox, GRID_B.oz, GRID_B.size) },
     uWd: { value: WAVES.map((w) => new THREE.Vector2(w.d[0], w.d[1]).normalize()) },
     uWa: { value: WAVES.map((w) => w.a) },
     uWl: { value: WAVES.map((w) => w.l) },
   };
-  const oceanGeo = new THREE.PlaneGeometry(2, 2, 320, 320);
+  const oceanGeo = new THREE.PlaneGeometry(2, 2, GRAPHICS[quality].ocean, GRAPHICS[quality].ocean);
   oceanGeo.rotateX(-Math.PI / 2);
   const ocean = new THREE.Mesh(
     oceanGeo,
@@ -128,6 +165,7 @@ void main(){
 }`,
       fragmentShader: /* glsl */ `
 uniform float uTime,uSea,uFogD,uFoam; uniform vec3 uCam,uSun,uSunCol,uHorizon,uZenith,uDeep,uFog;
+uniform sampler2D uReflection,uHeightA,uHeightB; uniform mat4 uReflectionMatrix; uniform vec3 uGridA,uGridB;
 varying vec3 vW; varying vec3 vN; varying float vCrest;
 ${NOISE_GLSL}
 void main(){
@@ -142,10 +180,23 @@ void main(){
  float F=0.02+0.98*pow(1.-max(dot(N,V),0.),5.);
  vec3 R=reflect(-V,N); R.y=abs(R.y);
  vec3 skyc=mix(uHorizon,uZenith,pow(R.y,0.55));
- float sp=pow(max(dot(R,uSun),0.),380.)*6.+pow(max(dot(R,uSun),0.),24.)*0.25;
+ vec4 projected=uReflectionMatrix*vec4(vW.x,0.,vW.z,1.);
+ vec2 reflectionUV=projected.xy/projected.w+N.xz*0.018/(1.+dist*0.008);
+ float reflectionEdge=smoothstep(0.,0.06,reflectionUV.x)*smoothstep(0.,0.06,reflectionUV.y)*(1.-smoothstep(0.94,1.,reflectionUV.x))*(1.-smoothstep(0.94,1.,reflectionUV.y))*step(0.,projected.w);
+ vec3 reflected=min(texture2D(uReflection,clamp(reflectionUV,vec2(0.002),vec2(0.998))).rgb,vec3(8.));
+ skyc=mix(skyc,reflected,reflectionEdge*0.88);
+ float sp=pow(max(dot(R,uSun),0.),380.)*2.5+pow(max(dot(R,uSun),0.),24.)*0.15;
  vec3 scatter=vec3(0.03,0.32,0.33)*max(0.,vCrest+0.15)*(0.35+0.65*max(dot(uSun,vec3(0,1,0)),0.))*1.3;
  vec3 col=mix(uDeep+scatter,skyc,F)+uSunCol*sp;
+ vec2 uvA=(q-uGridA.xy)/uGridA.z, uvB=(q-uGridB.xy)/uGridB.z;
+ float insideA=step(0.,uvA.x)*step(uvA.x,1.)*step(0.,uvA.y)*step(uvA.y,1.);
+ float insideB=step(0.,uvB.x)*step(uvB.x,1.)*step(0.,uvB.y)*step(uvB.y,1.);
+ float bed=max(mix(-100.,texture2D(uHeightA,uvA).r,insideA),mix(-100.,texture2D(uHeightB,uvB).r,insideB));
+ float depth=max(0.,vW.y-bed);
+ col+=vec3(0.015,0.12,0.105)*exp(-depth*0.28)*(1.-F);
  float foam=smoothstep(0.55-uFoam*0.45,1.0,vCrest+n2*0.55)*smoothstep(0.35,0.75,n1+n2*0.5);
+ float shoreline=(1.-smoothstep(0.3,2.5,depth))*smoothstep(0.15,0.7,n1+0.22*sin(depth*5.-uTime*2.));
+ foam=max(foam,shoreline*0.85);
  col=mix(col,vec3(0.85,0.9,0.92)*(0.35+dot(uSunCol,vec3(.2))),foam*0.9);
  float fg=1.-exp(-uFogD*uFogD*dist*dist);
  col=mix(col,uFog,fg);
@@ -165,6 +216,7 @@ void main(){
     uSunCol: { value: new THREE.Color() },
     uDark: { value: new THREE.Color() },
     uFlash: { value: 0 },
+    uSteps: { value: GRAPHICS[quality].cloudSteps },
     uWind: { value: new THREE.Vector2(-0.7, 0.5) },
   };
   const clouds = new THREE.Mesh(
@@ -176,20 +228,33 @@ void main(){
       side: THREE.DoubleSide,
       vertexShader: `varying vec3 vW; void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
       fragmentShader: /* glsl */ `
-uniform float uTime,uCover,uFlash; uniform vec3 uCam,uSun,uSunCol,uDark; uniform vec2 uWind; varying vec3 vW;
+uniform float uTime,uCover,uFlash,uSteps; uniform vec3 uCam,uSun,uSunCol,uDark; uniform vec2 uWind; varying vec3 vW;
 ${NOISE_GLSL}
+float density(vec3 p){
+ float layer=(p.y-650.)/500.;
+ vec2 q=p.xz/2100.+uWind*uTime*0.006;
+ float body=fbm(q)+0.38*fbm(q*2.7+p.y*0.0013)-0.2;
+ float shape=max(0.,body-(0.76-uCover*0.48))*3.;
+ return shape*smoothstep(0.,0.16,layer)*(1.-smoothstep(0.58,1.,layer));
+}
 void main(){
- vec2 p=vW.xz/2600.+uWind*uTime*0.006;
- float d=fbm(p)+0.5*fbm(p*2.7+3.)-0.25;
- float a=smoothstep(1.02-uCover*1.05,1.25-uCover*0.75,d*1.5);
- float dn=fbm(p+uSun.xz*0.05)+0.5*fbm((p+uSun.xz*0.05)*2.7+3.)-0.25;
- float lit=clamp((d-dn)*5.+0.55,0.,1.);
- vec3 V=normalize(vW-uCam);
- float silver=pow(max(dot(V,uSun),0.),10.)*(1.-a*0.6);
- vec3 col=mix(uDark,uDark*1.5+uSunCol*0.7,lit*(1.-uCover*0.75))+uSunCol*silver*1.6+vec3(0.8,0.85,1.)*uFlash*2.5*fbm(p*5.);
- float dist=length(vW.xz-uCam.xz);
- a*=1.-smoothstep(5500.,12500.,dist);
- gl_FragColor=vec4(col,a);
+ vec3 ray=normalize(vW-uCam);
+ float entry=max(0.,(650.-uCam.y)/max(0.035,ray.y));
+ float stride=min(4200.,500./max(0.12,ray.y))/uSteps;
+ float transmittance=1.; vec3 col=vec3(0.);
+ float silver=pow(max(dot(ray,uSun),0.),16.);
+ for(int i=0;i<24;i++){
+  if(float(i)>=uSteps || transmittance<0.015) break;
+  vec3 p=uCam+ray*(entry+(float(i)+0.5)*stride);
+  float d=density(p);
+  float shadow=exp(-density(p+uSun*130.)*2.4-density(p+uSun*300.)*1.2);
+  float alpha=1.-exp(-d*stride*0.009);
+  vec3 light=uDark*(0.7+0.3*(p.y-650.)/500.)+uSunCol*shadow*(0.85+silver*1.8)+vec3(0.7,0.8,1.)*uFlash;
+  col+=transmittance*alpha*light;
+  transmittance*=1.-alpha;
+ }
+ float opacity=(1.-transmittance)*(1.-smoothstep(8500.,14500.,length(vW.xz-uCam.xz)));
+ gl_FragColor=vec4(col/max(0.001,1.-transmittance),opacity);
 }`,
     }),
   );
@@ -201,7 +266,7 @@ void main(){
 
   /* ---- grass (camera-following instanced tile) ---- */
   const TILE = 110;
-  const BLADES = 110000;
+  const BLADES = GRAPHICS.ultra.grass;
   const blade = new THREE.BufferGeometry();
   blade.setAttribute(
     'position',
@@ -221,7 +286,7 @@ void main(){
     offs[i * 4 + 3] = Math.random();
   }
   ig.setAttribute('aOff', new THREE.InstancedBufferAttribute(offs, 4));
-  ig.instanceCount = BLADES;
+  ig.instanceCount = GRAPHICS[quality].grass;
   const grassU = {
     uTime: { value: 0 },
     uCam: { value: new THREE.Vector3() },
@@ -285,7 +350,7 @@ void main(){
     const a = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) a.set([c.r, c.g, c.b], i * 3);
     g.setAttribute('color', new THREE.BufferAttribute(a, 3));
-    return g.toNonIndexed();
+    return g.index ? g.toNonIndexed() : g;
   };
   const pine = mergeGeometries([
     paint(new THREE.CylinderGeometry(0.18, 0.3, 2.2, 6).translate(0, 1.1, 0), 0x4a3524),
@@ -487,10 +552,25 @@ void main(){
   const KCOL = { spray: [0.9, 0.95, 1], dust: [0.55, 0.47, 0.36], sparks: [6, 3, 0.8] };
 
   /* ---- post ---- */
-  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 2 });
+  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: Math.min(GRAPHICS[quality].samples, renderer.capabilities.maxSamples) });
   const composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.5, 0.75, 0.9);
+  const ao = new GTAOPass(scene, camera, 1, 1);
+  ao.blendIntensity = 0.48;
+  ao.updateGtaoMaterial({ radius: 1.2, thickness: 0.8, distanceFallOff: 1, samples: quality === 'ultra' ? 16 : 8 });
+  ao.updatePdMaterial({ radius: 4, samples: 8, rings: 2 });
+  const renderAO = ao.render.bind(ao);
+  // These surfaces displace vertices in custom shaders, so an override normal
+  // material would produce false geometry. AO is evaluated on solid objects.
+  const noAO = [sky, ocean, clouds, grass];
+  const aoVisibility = noAO.map(() => true);
+  ao.render = (...args: Parameters<GTAOPass['render']>) => {
+    for (let i = 0; i < noAO.length; i++) { aoVisibility[i] = noAO[i]!.visible; noAO[i]!.visible = false; }
+    try { renderAO(...args); }
+    finally { for (let i = 0; i < noAO.length; i++) noAO[i]!.visible = aoVisibility[i]!; }
+  };
+  composer.addPass(ao);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.45, 1.3);
   composer.addPass(bloom);
   const grade = new ShaderPass({
     uniforms: { tDiffuse: { value: null }, uStorm: { value: 0 }, uSpeed: { value: 0 }, uFlash: { value: 0 } },
@@ -520,6 +600,12 @@ void main(){
   const windBase = new THREE.Vector2(-0.77, 0.64); // from the north-east
   let flash = 0;
   let flashT = 4;
+  // Three r187 renders through WebGL2; the declaration also retains the old GL1 union.
+  const gpuTimer = new GpuTimer(renderer.getContext() as WebGL2RenderingContext);
+  let renderFrame = 0, lastFrame = performance.now(), averageFrameMs = 16.7;
+  const renderSize = new THREE.Vector2();
+  const contextLost = () => gpuTimer.clear(true);
+  canvas.addEventListener('webglcontextlost', contextLost);
 
   const world: WorldHandle = {
     renderer,
@@ -529,6 +615,30 @@ void main(){
     wet: 0,
     time: 0,
     speedFx: 0,
+    quality,
+    setQuality(next) {
+      if (next === quality) return;
+      quality = next;
+      world.quality = next;
+      try { localStorage.setItem('cg-graphics', next); } catch { /* Storage can be disabled. */ }
+      const settings = GRAPHICS[next];
+      const geometry = new THREE.PlaneGeometry(2, 2, settings.ocean, settings.ocean);
+      geometry.rotateX(-Math.PI / 2);
+      ocean.geometry.dispose(); ocean.geometry = geometry;
+      ig.instanceCount = settings.grass;
+      cloudU.uSteps.value = settings.cloudSteps;
+      sun.shadow.mapSize.setScalar(Math.min(settings.shadow, renderer.capabilities.maxTextureSize));
+      sun.shadow.map?.dispose(); sun.shadow.map = null;
+      sun.shadow.needsUpdate = true;
+      composer.renderTarget1.samples = composer.renderTarget2.samples = Math.min(settings.samples, renderer.capabilities.maxSamples);
+      composer.renderTarget1.dispose(); composer.renderTarget2.dispose();
+      ao.updateGtaoMaterial({ samples: next === 'ultra' ? 16 : 8 });
+      world.resize();
+    },
+    graphicsStats() {
+      renderer.getDrawingBufferSize(renderSize);
+      return { fps: 1000 / averageFrameMs, gpuMs: gpuTimer.latest?.totalMs ?? null, width: renderSize.x, height: renderSize.y, triangles: renderer.info.render.triangles, calls: renderer.info.render.calls };
+    },
     heightAt,
     roadNearest,
     roadPoint: (p) => roadPoint(p, 0),
@@ -580,6 +690,12 @@ void main(){
       skyU['rayleigh']!.value = 1.5 - 1.0 * s;
       skyU['mieCoefficient']!.value = 0.006 + 0.02 * s;
       skyU['mieDirectionalG']!.value = 0.86;
+      if (Math.abs(s - environmentStorm) > 0.08) {
+        const nextEnvironment = pmrem.fromScene(environmentScene, 0.04, 0.1, 20000, { size: 256 });
+        scene.environment = nextEnvironment.texture;
+        environmentTarget?.dispose(); environmentTarget = nextEnvironment;
+        environmentStorm = s;
+      }
       const day = THREE.MathUtils.smoothstep(sunDir.y, -0.06, 0.2);
       // lightning
       flashT -= dt;
@@ -660,16 +776,34 @@ void main(){
       grade.uniforms['uStorm']!.value = s;
       grade.uniforms['uSpeed']!.value = world.speedFx;
       grade.uniforms['uFlash']!.value = fl * 0.25;
-      bloom.strength = 0.42 + 0.35 * (1 - day);
+      bloom.strength = 0.22 + 0.2 * (1 - day);
     },
     render() {
-      composer.render();
+      const now = performance.now();
+      const elapsed = now - lastFrame; lastFrame = now;
+      if (elapsed > 0 && elapsed < 1000) averageFrameMs += (elapsed - averageFrameMs) * 0.08;
+      renderer.info.reset();
+      gpuTimer.beginFrame(renderFrame++); gpuTimer.begin('graphics');
+      try {
+        scene.updateMatrixWorld(); camera.updateMatrixWorld();
+        ocean.visible = false;
+        try {
+          reflection.onBeforeRender(renderer, scene, camera, reflection.geometry, reflectionMaterial, null!);
+          reflectionMatrix.copy(reflectionMaterial.uniforms['textureMatrix']!.value as THREE.Matrix4).multiply(reflectionInverse);
+        } finally { ocean.visible = true; }
+        composer.render();
+      } finally { gpuTimer.endFrame(); }
     },
     resize() {
       const w = canvas.clientWidth || window.innerWidth;
       const h = canvas.clientHeight || window.innerHeight;
+      const ratio = graphicsRatio(w, h, window.devicePixelRatio || 1, quality, renderer.capabilities.maxTextureSize);
+      renderer.setPixelRatio(ratio);
       renderer.setSize(w, h, false);
+      composer.setPixelRatio(ratio);
       composer.setSize(w, h);
+      const reflectionSize = Math.min(GRAPHICS[quality].reflection, renderer.capabilities.maxTextureSize, Math.max(w, h) * ratio);
+      reflection.getRenderTarget().setSize(Math.max(1, Math.floor(reflectionSize * w / Math.max(w, h))), Math.max(1, Math.floor(reflectionSize * h / Math.max(w, h))));
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     },
@@ -677,6 +811,12 @@ void main(){
   for (let k = 0; k < PN; k++) pPos[k * 3 + 1] = -999;
   world.resize();
   window.addEventListener('resize', world.resize);
+  window.addEventListener('pagehide', () => {
+    gpuTimer.clear(); pmrem.dispose(); environmentTarget?.dispose(); environmentSky.material.dispose();
+    reflection.dispose(); reflection.geometry.dispose(); ao.dispose(); bloom.dispose(); grade.dispose(); composer.dispose();
+    window.removeEventListener('resize', world.resize);
+    canvas.removeEventListener('webglcontextlost', contextLost);
+  }, { once: true });
   return world;
 }
 

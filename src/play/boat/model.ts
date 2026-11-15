@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addSurfaceDetail } from './materials';
 import { BOOM_LENGTH, BOOM_Y, MAST_Z, SailCloth, SheetRope } from './fabric';
 import { REEFS, type BoatPhysics } from './physics';
 
@@ -56,6 +57,9 @@ export function createBoatModel() {
     sailMaterial,
     red,
   ];
+  addSurfaceDetail(wood, 'wood');
+  addSurfaceDetail(lightWood, 'wood');
+  addSurfaceDetail(sailMaterial, 'cloth');
 
   function mesh(
     geometry: THREE.BufferGeometry,

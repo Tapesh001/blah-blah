@@ -9,7 +9,11 @@ document.body.append(canvas);
 const ui = document.createElement('div');
 ui.style.cssText = 'position:fixed;inset:0;pointer-events:none;color:#f3efe6;text-shadow:0 1px 4px #000a';
 ui.innerHTML = `
-<div id="obj" style="position:absolute;top:18px;left:22px;font-size:15px;letter-spacing:.08em;text-transform:uppercase"></div>
+<div id="obj" style="position:absolute;top:18px;left:22px;max-width:calc(100% - 190px);font-size:15px;letter-spacing:.08em;text-transform:uppercase"></div>
+<div style="position:absolute;right:14px;top:14px;pointer-events:auto;background:#10222dd9;border:1px solid #aec4cf44;border-radius:8px;padding:9px 12px;font-size:12px">
+ <label for="graphics">Graphics </label><select id="graphics" style="font:inherit;background:#203945;color:#fff5dd;border:1px solid #8aa6b4;border-radius:4px;padding:3px"><option value="ultra">Ultra</option><option value="high">High</option></select>
+ <div id="render-stats" style="margin-top:5px;font-variant-numeric:tabular-nums;color:#c9dce4"></div>
+</div>
 <div id="gauges" style="position:absolute;bottom:20px;left:22px;font:14px/1.6 ui-monospace,monospace"></div>
 <div id="prompt" style="position:absolute;bottom:14%;width:100%;text-align:center;font-size:18px"></div>
 <div id="toast" style="position:absolute;top:22%;width:100%;text-align:center;font-size:22px;transition:opacity .6s;opacity:0"></div>`;
@@ -35,6 +39,7 @@ const ptr = { x: 0, y: 0, down: false, pressed: false, released: false };
 let lx = 0;
 let ly = 0;
 addEventListener('keydown', (e) => {
+  if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
   if (!keys.has(e.code)) hit.add(e.code);
   keys.add(e.code);
   if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
@@ -64,6 +69,10 @@ const input: Input = {
 
 /* ---- world + modes ---- */
 const world = createWorld(canvas);
+const graphicsSelect = $('graphics') as HTMLSelectElement;
+graphicsSelect.value = world.quality;
+graphicsSelect.addEventListener('change', () => world.setQuality(graphicsSelect.value === 'high' ? 'high' : 'ultra'));
+let lastGraphicsReport = 0;
 Object.assign(window, { world, renderer: world.renderer, scene: world.scene });
 
 type Factory = Record<string, unknown>;
@@ -150,6 +159,12 @@ world.renderer.setAnimationLoop(() => {
   }
   world.update(dt);
   world.render();
+  if (performance.now() - lastGraphicsReport > 500) {
+    const stats = world.graphicsStats();
+    $('render-stats').textContent = `${Math.round(stats.fps)} fps · ${stats.gpuMs === null ? 'WebGL2' : stats.gpuMs.toFixed(1) + ' ms GPU'}`;
+    $('render-stats').title = `${stats.width} × ${stats.height} render pixels · ${stats.triangles.toLocaleString()} triangles · ${stats.calls} draws`;
+    lastGraphicsReport = performance.now();
+  }
 
   $('gauges').innerHTML = [...gauges].map(([k, v]) => `${k} <b>${typeof v === 'number' ? v.toFixed(1) : v}</b>`).join('<br>');
   if ((toastT -= dt) < 0) $('toast').style.opacity = '0';
