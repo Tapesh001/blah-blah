@@ -37,5 +37,19 @@ test('production entry starts the playable bike world and renders without errors
   );
   await expect(page.locator('#gauges')).toContainText('speed');
   await page.screenshot({ path: testInfo.outputPath('playable-world.png') });
+  // Compile the Ultra post stack and the cloth/wood shaders in the real world.
+  // Keep the software-rendered test small; this is correctness, not an FPS claim.
+  await page.setViewportSize({ width: 320, height: 180 });
+  await page.getByLabel('Graphics').selectOption('ultra');
+  await page.locator('canvas').click();
+  await page.keyboard.press('n');
+  await expect(page.locator('#obj')).toHaveText('Sail to the far island');
+  await expect(page.locator('#render-stats')).toHaveAttribute(
+    'title',
+    /480 × 270 render pixels/,
+  );
+  await page.keyboard.press('v');
+  await expect(page.locator('#gauges')).toContainText('trim');
+  await page.screenshot({ path: testInfo.outputPath('ultra-sailing.png') });
   expect(errors).toEqual([]);
 });

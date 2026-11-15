@@ -285,8 +285,8 @@ export function roadPoint(
 }
 
 /* ---------- meshes ---------- */
-const cGrassA = new THREE.Color(0x4f7a2c);
-const cGrassB = new THREE.Color(0x7c8f3a);
+const cGrassA = new THREE.Color(0x416137);
+const cGrassB = new THREE.Color(0x6c7845);
 const cHeath = new THREE.Color(0x6b5a4a);
 const cRock = new THREE.Color(0x6e6a66);
 const cRockD = new THREE.Color(0x45413f);
@@ -324,13 +324,13 @@ export function buildTerrainMesh(G: IsleGrid, mat: THREE.Material): THREE.Mesh {
     if (rd < 9) {
       c.lerp(cGravel, 1 - THREE.MathUtils.smoothstep(rd, 4.2, 9));
       c.lerp(cRoad, 1 - THREE.MathUtils.smoothstep(rd, 3.0, 4.2));
-      if (rd < 0.45 && Math.floor((x + z) / 6) % 2 === 0) c.setHex(0xd8d2b0);
     }
     c.multiplyScalar(1.25 + 0.4 * fbm(x / 3.1, z / 3.1, 2));
     col[k * 3] = c.r;
     col[k * 3 + 1] = c.g;
     col[k * 3 + 2] = c.b;
   }
+  geo.setAttribute('roadDistance', new THREE.BufferAttribute(G.road, 1));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   const m = new THREE.Mesh(geo, mat);
   m.position.set(G.isle.x, 0, G.isle.z);

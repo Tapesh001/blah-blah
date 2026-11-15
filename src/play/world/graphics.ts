@@ -5,12 +5,12 @@ export const GRAPHICS = {
   high: {
     scale: 1,
     maxRatio: 1,
-    shadow: 1536,
-    ocean: 200,
+    shadow: 2048,
+    ocean: 256,
     grass: 80000,
     cloudSteps: 8,
-    reflection: 384,
-    samples: 0,
+    reflection: 768,
+    samples: 2,
   },
   ultra: {
     scale: 1.5,
@@ -26,14 +26,11 @@ export const GRAPHICS = {
 
 export function savedGraphics(): GraphicsQuality {
   try {
-    return localStorage.getItem('cg-graphics2') === 'ultra' ? 'ultra' : 'high';
+    return localStorage.getItem('cg-graphics') === 'high' ? 'high' : 'ultra';
   } catch {
-    return 'high';
+    return 'ultra';
   }
 }
-
-/** Dynamic resolution: the main loop lowers this when frames run long. */
-export const dynamic = { scale: 1 };
 
 /** Bound physical pixels as well as dimensions, including 4K and HiDPI screens. */
 export function graphicsRatio(
@@ -44,15 +41,12 @@ export function graphicsRatio(
   maxSize: number,
 ) {
   const settings = GRAPHICS[quality];
-  return (
-    dynamic.scale *
-    Math.min(
-      settings.maxRatio,
-      deviceRatio * settings.scale,
-      maxSize / width,
-      maxSize / height,
-      Math.sqrt(8_000_000 / (width * height)),
-    )
+  return Math.min(
+    settings.maxRatio,
+    deviceRatio * settings.scale,
+    maxSize / width,
+    maxSize / height,
+    Math.sqrt(8_000_000 / (width * height)),
   );
 }
 
@@ -60,14 +54,15 @@ export function graphicsRatio(
 export function detailTerrain(material: MeshStandardMaterial) {
   material.onBeforeCompile = (shader) => {
     shader.vertexShader =
-      'varying vec3 vSurfacePosition;\n' + shader.vertexShader;
+      'attribute float roadDistance; varying float vRoadDistance; varying vec3 vSurfacePosition; varying vec3 vSurfaceNormal;\n' +
+      shader.vertexShader;
     shader.vertexShader = shader.vertexShader.replace(
       '#include <worldpos_vertex>',
-      '#include <worldpos_vertex>\nvSurfacePosition = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+      '#include <worldpos_vertex>\nvSurfacePosition = (modelMatrix * vec4(transformed, 1.0)).xyz; vRoadDistance = roadDistance; vSurfaceNormal = normalize(mat3(modelMatrix)*normal);',
     );
     shader.fragmentShader =
       `
-varying vec3 vSurfacePosition;
+varying vec3 vSurfacePosition; varying vec3 vSurfaceNormal; varying float vRoadDistance;
 float surfaceHash(vec3 p) { p=fract(p*0.1031); p+=dot(p,p.yzx+33.33); return fract((p.x+p.y)*p.z); }
 float surfaceNoise(vec3 p) {
  vec3 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
@@ -78,14 +73,21 @@ float surfaceNoise(vec3 p) {
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <color_fragment>',
       `#include <color_fragment>
+ float road = 1.-smoothstep(3.0,4.5,vRoadDistance);
+ float detailFade = 1.-smoothstep(35.,160.,length(vViewPosition));
  float mineral = surfaceNoise(vSurfacePosition*2.5)*0.65 + surfaceNoise(vSurfacePosition*17.)*0.35;
- diffuseColor.rgb *= mix(0.68,1.16,mineral);
+ float aggregate = surfaceNoise(vSurfacePosition*48.);
+ float strata = sin(vSurfacePosition.y*9.+surfaceNoise(vSurfacePosition*0.8)*5.);
+ float cliff = 1.-smoothstep(0.65,0.88,abs(vSurfaceNormal.y));
+ diffuseColor.rgb *= mix(mix(0.72,1.18,mineral)*(1.+cliff*strata*0.10),mix(0.82,1.2,aggregate),road*detailFade);
+ // Fine asphalt grains stay separate from the larger rock and soil pattern.
+ diffuseColor.rgb = mix(diffuseColor.rgb,vec3(0.075,0.083,0.087)*(0.85+aggregate*0.35),road*0.65);
 `,
     );
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <normal_fragment_maps>',
       `#include <normal_fragment_maps>
- float grain = (surfaceNoise(vSurfacePosition*6.)*0.02 + surfaceNoise(vSurfacePosition*28.)*0.004)/(1.+length(vViewPosition)*0.03);
+ float grain = mix(surfaceNoise(vSurfacePosition*6.)*0.035 + surfaceNoise(vSurfacePosition*28.)*0.006, surfaceNoise(vSurfacePosition*48.)*0.0015,road)/(1.+length(vViewPosition)*0.04);
  vec3 sx=dFdx(-vViewPosition), sy=dFdy(-vViewPosition);
  vec3 r1=cross(sy,normal), r2=cross(normal,sx);
  float det=dot(sx,r1);
@@ -94,5 +96,5 @@ float surfaceNoise(vec3 p) {
 `,
     );
   };
-  material.customProgramCacheKey = () => 'terrain-detail-v1';
+  material.customProgramCacheKey = () => 'terrain-detail-v2';
 }

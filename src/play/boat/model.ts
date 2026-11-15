@@ -9,11 +9,15 @@ export function createBoatModel() {
   const root = new THREE.Group();
   root.name = 'sailing-boat';
   root.rotation.order = 'YXZ';
-  const wood = new THREE.MeshStandardMaterial({
+  const wood = new THREE.MeshPhysicalMaterial({
+    clearcoat: 0.32,
+    clearcoatRoughness: 0.38,
     color: 0x784626,
     roughness: 0.58,
   });
-  const lightWood = new THREE.MeshStandardMaterial({
+  const lightWood = new THREE.MeshPhysicalMaterial({
+    clearcoat: 0.4,
+    clearcoatRoughness: 0.3,
     color: 0xc79351,
     roughness: 0.5,
   });

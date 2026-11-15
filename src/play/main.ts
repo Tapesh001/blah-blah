@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import type { GameMode, Hud, Input } from './api';
 import { createWorld } from './world/world';
-import { dynamic } from './world/graphics';
 
 const canvas = document.createElement('canvas');
 canvas.style.cssText =
@@ -256,12 +255,6 @@ world.renderer.setAnimationLoop(() => {
     $('render-stats').title =
       `${stats.width} × ${stats.height} render pixels · ${stats.triangles.toLocaleString()} triangles · ${stats.calls} draws`;
     lastGraphicsReport = performance.now();
-    // dynamic resolution toward 60 fps
-    const prev = dynamic.scale;
-    if (stats.fps < 54) dynamic.scale = Math.max(0.7, dynamic.scale * 0.93);
-    else if (stats.fps > 59 && dynamic.scale < 1)
-      dynamic.scale = Math.min(1, dynamic.scale * 1.04);
-    if (dynamic.scale !== prev) world.resize();
   }
 
   $('gauges').innerHTML = [...gauges]

@@ -7,7 +7,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { createCoastalPine, createRoadDetails } from './scenery';
 import { GpuTimer } from '../../gfx/frame-tools.js';
 import {
   GRAPHICS,
@@ -135,7 +135,7 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
   const pmrem = new THREE.PMREMGenerator(renderer);
   let environmentTarget: THREE.WebGLRenderTarget | null = null;
   let environmentStorm = -1;
-  scene.environmentIntensity = 0.4;
+  scene.environmentIntensity = 0.55;
   const reflection = new Reflector(new THREE.PlaneGeometry(2, 2), {
     textureWidth: 512,
     textureHeight: 512,
@@ -215,7 +215,7 @@ void main(){
  float e=0.25;
  float dx=fbm((q+vec2(e,0.))*0.35+uTime*vec2(.5,.3))-n1 + (fbm((q+vec2(e,0.))*1.1-uTime*vec2(.4,.7))-n2)*.5;
  float dz=fbm((q+vec2(0.,e))*0.35+uTime*vec2(.5,.3))-n1 + (fbm((q+vec2(0.,e))*1.1-uTime*vec2(.4,.7))-n2)*.5;
- float det=(0.9+uSea*0.8)/(1.+dist*0.012);
+ float det=(0.32+uSea*0.35)/(1.+dist*0.018);
  vec3 N=normalize(vN+vec3(-dx,0.,-dz)*det*3.2);
  float F=0.02+0.98*pow(1.-max(dot(N,V),0.),5.);
  vec3 R=reflect(-V,N); R.y=abs(R.y);
@@ -226,14 +226,14 @@ void main(){
  vec3 reflected=min(texture2D(uReflection,clamp(reflectionUV,vec2(0.002),vec2(0.998))).rgb,vec3(8.));
  skyc=mix(skyc,reflected,reflectionEdge*0.88);
  float sp=pow(max(dot(R,uSun),0.),380.)*2.5+pow(max(dot(R,uSun),0.),24.)*0.15;
- vec3 scatter=vec3(0.03,0.32,0.33)*max(0.,vCrest+0.15)*(0.35+0.65*max(dot(uSun,vec3(0,1,0)),0.))*1.3;
+ vec3 scatter=vec3(0.015,0.18,0.16)*max(0.,vCrest+0.15)*(0.35+0.65*max(dot(uSun,vec3(0,1,0)),0.))*1.3;
  vec3 col=mix(uDeep+scatter,skyc,F)+uSunCol*sp;
  vec2 uvA=(q-uGridA.xy)/uGridA.z, uvB=(q-uGridB.xy)/uGridB.z;
  float insideA=step(0.,uvA.x)*step(uvA.x,1.)*step(0.,uvA.y)*step(uvA.y,1.);
  float insideB=step(0.,uvB.x)*step(uvB.x,1.)*step(0.,uvB.y)*step(uvB.y,1.);
  float bed=max(mix(-100.,texture2D(uHeightA,uvA).r,insideA),mix(-100.,texture2D(uHeightB,uvB).r,insideB));
  float depth=max(0.,vW.y-bed);
- col+=vec3(0.015,0.12,0.105)*exp(-depth*0.28)*(1.-F);
+ col=mix(col,vec3(0.025,0.24,0.20)*(0.6+0.4*n1),exp(-depth*0.18)*(1.-F)*0.55);
  float foam=smoothstep(0.55-uFoam*0.45,1.0,vCrest+n2*0.55)*smoothstep(0.35,0.75,n1+n2*0.5);
  float shoreline=(1.-smoothstep(0.3,2.5,depth))*smoothstep(0.15,0.7,n1+0.22*sin(depth*5.-uTime*2.));
  foam=max(foam,shoreline*0.85);
@@ -273,7 +273,9 @@ ${NOISE_GLSL}
 float density(vec3 p){
  float layer=(p.y-650.)/500.;
  vec2 q=p.xz/2100.+uWind*uTime*0.006;
- float body=fbm(q)+0.38*fbm(q*2.7+p.y*0.0013)-0.2;
+ float y=p.y/240.; float level=floor(y); float fy=fract(y); fy=fy*fy*(3.-2.*fy);
+ float volume=mix(vn(q*3.1+level*vec2(7.1,3.4)),vn(q*3.1+(level+1.)*vec2(7.1,3.4)),fy);
+ float body=fbm(q)*0.75+volume*0.4+vn(q*9.1+y*0.3)*0.12-0.14;
  float shape=max(0.,body-(0.76-uCover*0.48))*3.;
  return shape*smoothstep(0.,0.16,layer)*(1.-smoothstep(0.58,1.,layer));
 }
@@ -285,7 +287,7 @@ void main(){
  float silver=pow(max(dot(ray,uSun),0.),16.);
  for(int i=0;i<24;i++){
   if(float(i)>=uSteps || transmittance<0.015) break;
-  vec3 p=uCam+ray*(entry+(float(i)+0.5)*stride);
+  vec3 p=uCam+ray*(entry+(float(i)+0.35+hash21(gl_FragCoord.xy)*0.3)*stride);
   float d=density(p);
   float shadow=exp(-density(p+uSun*130.)*2.4-density(p+uSun*300.)*1.2);
   float alpha=1.-exp(-d*stride*0.009);
@@ -308,15 +310,36 @@ void main(){
   const TILE = 110;
   const BLADES = GRAPHICS.ultra.grass;
   const blade = new THREE.BufferGeometry();
+  const bladeVertices: number[] = [];
+  for (let segment = 0; segment < 4; segment++) {
+    const y0 = segment / 4,
+      y1 = (segment + 1) / 4;
+    const w0 = 0.034 * (1 - y0),
+      w1 = 0.034 * (1 - y1);
+    bladeVertices.push(
+      -w0,
+      y0,
+      0,
+      w0,
+      y0,
+      0,
+      -w1,
+      y1,
+      0,
+      w0,
+      y0,
+      0,
+      w1,
+      y1,
+      0,
+      -w1,
+      y1,
+      0,
+    );
+  }
   blade.setAttribute(
     'position',
-    new THREE.Float32BufferAttribute(
-      [
-        -0.09, 0, 0, 0.09, 0, 0, -0.06, 0.5, 0, 0.09, 0, 0, 0.06, 0.5, 0, -0.06,
-        0.5, 0, -0.06, 0.5, 0, 0.06, 0.5, 0, 0, 1, 0,
-      ],
-      3,
-    ),
+    new THREE.Float32BufferAttribute(bladeVertices, 3),
   );
   const ig = new THREE.InstancedBufferGeometry();
   ig.index = blade.index;
@@ -355,9 +378,10 @@ void main(){
  vec2 uv=(base-uOrg.xy)/uOrg.z; vec4 hm=texture2D(uH,uv);
  float dist=length(base-uCam.xz);
  float fade=1.-smoothstep(uTile*0.36,uTile*0.5,dist);
- float hgt=(0.35+0.75*aOff.z)*hm.g*fade*step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.);
+ float hgt=(0.28+0.52*aOff.z)*hm.g*fade*step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.);
  float ang=aOff.w*6.2831; float cs=cos(ang),sn=sin(ang);
  vec3 p=vec3(position.x*cs,position.y*hgt,position.x*sn);
+ p.xz+=vec2(cs,sn)*position.y*position.y*hgt*0.18;
  float t=position.y;
  float gust=0.5+0.5*sin(dot(base,uWind.xy)*0.11-uTime*(1.2+uWind.z*0.12)+aOff.z*2.);
  gust*=0.6+0.4*sin(dot(base,vec2(-uWind.y,uWind.x))*0.05+uTime*0.7);
@@ -371,7 +395,7 @@ void main(){
 uniform vec3 uSunCol,uAmb,uFog; uniform float uFogD; varying float vT; varying float vR; varying float vD; varying float vG;
 void main(){
  vec3 a=mix(vec3(0.10,0.22,0.05),vec3(0.24,0.36,0.09),vR);
- vec3 b=mix(vec3(0.42,0.55,0.16),vec3(0.62,0.6,0.22),vR);
+ vec3 b=mix(vec3(0.22,0.34,0.09),vec3(0.38,0.42,0.14),vR);
  vec3 alb=mix(a,b,vT*vT)+vec3(0.12,0.13,0.05)*vG*vT;
  vec3 col=alb*(uAmb*0.9+uSunCol*(0.35+0.65*vT));
  float fg=1.-exp(-uFogD*uFogD*vD*vD);
@@ -381,6 +405,8 @@ void main(){
   );
   grass.frustumCulled = false;
   scene.add(grass);
+
+  scene.add(createRoadDetails());
 
   /* ---- scenery ---- */
   const rnd = (() => {
@@ -395,18 +421,7 @@ void main(){
     g.setAttribute('color', new THREE.BufferAttribute(a, 3));
     return g.index ? g.toNonIndexed() : g;
   };
-  const pine = mergeGeometries([
-    paint(
-      new THREE.CylinderGeometry(0.18, 0.3, 2.2, 6).translate(0, 1.1, 0),
-      0x4a3524,
-    ),
-    paint(new THREE.ConeGeometry(2.0, 3.4, 7).translate(0, 3.4, 0), 0x1f4a2a),
-    paint(new THREE.ConeGeometry(1.5, 3.0, 7).translate(0, 5.2, 0), 0x275a31),
-    paint(
-      new THREE.ConeGeometry(0.95, 2.6, 7).translate(0.15, 6.9, 0),
-      0x2f6a38,
-    ),
-  ])!;
+  const pine = createCoastalPine();
   const propMat = new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.9,
@@ -467,7 +482,7 @@ void main(){
     0.6,
     1.2,
   );
-  const rock = paint(new THREE.IcosahedronGeometry(1, 1), 0x77726c);
+  const rock = paint(new THREE.IcosahedronGeometry(1, 2), 0x77726c);
   {
     const p = rock.attributes.position!;
     for (let i = 0; i < p.count; i++) {
@@ -723,6 +738,12 @@ void main(){
       depthWrite: false,
     }),
   );
+  pts.material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      '#include <color_fragment>\nfloat radius = length(gl_PointCoord - 0.5); diffuseColor.a *= 1.0 - smoothstep(0.25, 0.5, radius); if (diffuseColor.a < 0.01) discard;',
+    );
+  };
   pts.frustumCulled = false;
   scene.add(pts);
   let pNext = 0;
@@ -784,13 +805,13 @@ uniform sampler2D tDiffuse; uniform float uStorm,uSpeed,uFlash; varying vec2 vUv
 void main(){
  vec2 c=vUv-0.5; float r=length(c);
  vec3 col=vec3(0.); float w=0.;
- for(int i=0;i<6;i++){float t=float(i)/5.; vec2 u=0.5+c*(1.-uSpeed*0.045*t*r*2.); col+=texture2D(tDiffuse,u).rgb; w+=1.;}
+ for(int i=0;i<6;i++){float t=float(i)/5.; vec2 u=0.5+c*(1.-uSpeed*0.009*t*r*2.); col+=texture2D(tDiffuse,u).rgb; w+=1.;}
  col/=w;
  float l=dot(col,vec3(0.2126,0.7152,0.0722));
  col=mix(col,vec3(l)*vec3(0.86,0.95,1.08),uStorm*0.45);
- col=mix(col,col*col*(3.-2.*col),0.0);
+ col*=1.04;
  col*=mix(vec3(1.04,1.0,0.94),vec3(0.9,0.97,1.06),uStorm);
- col*=1.-smoothstep(0.35,0.95,r)*(0.45+0.25*uStorm);
+ col*=1.-smoothstep(0.35,0.95,r)*(0.15+0.15*uStorm);
  col+=uFlash*vec3(0.5,0.55,0.7);
  gl_FragColor=vec4(col,1.);
 }`,
@@ -830,7 +851,7 @@ void main(){
       quality = next;
       world.quality = next;
       try {
-        localStorage.setItem('cg-graphics2', next);
+        localStorage.setItem('cg-graphics', next);
       } catch {
         /* Storage can be disabled. */
       }
@@ -952,7 +973,7 @@ void main(){
         )
         .normalize();
       skyU['sunPosition']!.value.copy(sunDir);
-      skyU['turbidity']!.value = 2.5 + 14 * s;
+      skyU['turbidity']!.value = 2 + 14 * s;
       skyU['rayleigh']!.value = 1.5 - 1.0 * s;
       skyU['mieCoefficient']!.value = 0.006 + 0.02 * s;
       skyU['mieDirectionalG']!.value = 0.86;
@@ -978,10 +999,10 @@ void main(){
       }
       flash = Math.max(0, flash - dt * (flash > 0.6 ? 9 : 2.5));
       const fl = flash * (0.6 + 0.4 * Math.sin(world.time * 60));
-      const sunCol = lerpHex(0xffc98a, 0xff9a5a, 1 - day, new THREE.Color());
+      const sunCol = lerpHex(0xffe4c2, 0xffb27e, 1 - day, new THREE.Color());
       sun.color.copy(sunCol);
-      sun.intensity = 5.2 * day * (1 - 0.82 * s) + 0.05;
-      hemi.intensity = 0.55 + 1.0 * day * (1 - 0.55 * s) + fl * 3;
+      sun.intensity = 4.0 * day * (1 - 0.82 * s) + 0.05;
+      hemi.intensity = 0.4 + 0.65 * day * (1 - 0.55 * s) + fl * 3;
       lerpHex(0xbfd8ff, 0x55606c, s, hemi.color);
       const fogC = lerpHex(
         0x8fa9c0,
@@ -990,7 +1011,7 @@ void main(){
         new THREE.Color(),
       ).multiplyScalar(0.35 + 0.65 * day + fl);
       (scene.fog as THREE.FogExp2).color.copy(fogC);
-      const fd = 0.0003 + 0.0012 * s;
+      const fd = 0.00018 + 0.0012 * s;
       (scene.fog as THREE.FogExp2).density = fd;
       const cp = camera.position;
       sun.position.copy(cp).addScaledVector(sunDir, 300);
@@ -1016,7 +1037,7 @@ void main(){
       // clouds
       cloudU.uTime.value = world.time * (1 + 3 * s);
       cloudU.uCover.value =
-        0.32 + 0.68 * THREE.MathUtils.smoothstep(s, 0.1, 0.8);
+        0.24 + 0.76 * THREE.MathUtils.smoothstep(s, 0.1, 0.8);
       cloudU.uCam.value.copy(cp);
       cloudU.uSunCol.value.copy(lit).multiplyScalar(0.55);
       lerpHex(0x9aa7b5, 0x15191e, s, cloudU.uDark.value).multiplyScalar(
@@ -1061,11 +1082,11 @@ void main(){
       }
       pG.attributes.position!.needsUpdate = true;
       pG.attributes.color!.needsUpdate = true;
-      renderer.toneMappingExposure = 0.5 + 0.55 * (1 - day) * (1 - s * 0.3);
+      renderer.toneMappingExposure = 0.72 + 0.4 * (1 - day) * (1 - s * 0.3);
       grade.uniforms['uStorm']!.value = s;
       grade.uniforms['uSpeed']!.value = world.speedFx;
       grade.uniforms['uFlash']!.value = fl * 0.25;
-      bloom.strength = 0.22 + 0.2 * (1 - day);
+      bloom.strength = 0.12 + 0.2 * (1 - day);
     },
     render() {
       const now = performance.now();
