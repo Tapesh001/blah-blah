@@ -112,7 +112,7 @@ export function createBikeMode(): BikeMode {
         if (event === 'crash') {
           effectPoint.set(state.x, state.y + 0.25, state.z);
           effectVelocity.set(0, 1.8, 0);
-          world.burst('sparks', effectPoint, effectVelocity, 18);
+          world.burst('dust', effectPoint, effectVelocity, 6);
           hud.toast('Lost grip — returning to the road');
         }
       }

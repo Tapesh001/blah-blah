@@ -16,28 +16,29 @@ export function buildBikeModel() {
   const paint = new THREE.MeshPhysicalMaterial({
     color: 0x166d73,
     metalness: 0.58,
-    roughness: 0.27,
-    clearcoat: 0.8,
-    clearcoatRoughness: 0.2,
+    roughness: 0.5,
+    clearcoat: 0.3,
+    clearcoatRoughness: 0.5,
     normalMap: brushed.parameters.normalMap,
     normalScale: new THREE.Vector2(0.08, 0.08),
   });
   const brass = new THREE.MeshPhysicalMaterial({
     color: 0xd5ac63,
     metalness: 0.85,
-    roughness: 0.28,
+    // Roughness maps multiply this value; keep the final surface satin.
+    roughness: 0.85,
     ...brushed.parameters,
     normalScale: new THREE.Vector2(0.3, 0.3),
-    anisotropy: 0.6,
-    clearcoat: 0.25,
+    anisotropy: 0.2,
+    clearcoat: 0,
   });
   const steel = new THREE.MeshPhysicalMaterial({
     color: 0xb5c3c9,
     metalness: 0.9,
-    roughness: 0.26,
+    roughness: 0.85,
     ...brushed.parameters,
     normalScale: new THREE.Vector2(0.25, 0.25),
-    anisotropy: 0.72,
+    anisotropy: 0.2,
   });
   const rubber = new THREE.MeshStandardMaterial({
     color: 0x171e21,

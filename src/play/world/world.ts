@@ -90,13 +90,13 @@ export function createWorld(canvas: HTMLCanvasElement): WorldHandle {
   // white patch. Keep atmospheric light and overall scene exposure intact.
   sky.material.fragmentShader = sky.material.fragmentShader.replace(
     '( 760.0 * sundisc ) * min( vSunE * Fex, 80.0 )',
-    'sundisc * min( vSunE * Fex * 0.06, vec3( 3.0 ) )',
+    'sundisc * min( vSunE * Fex * 0.05, vec3( 2.4 ) )',
   );
   sky.scale.setScalar(12000);
   scene.add(sky);
   const skyU = sky.material.uniforms;
   const sunDir = new THREE.Vector3();
-  const sun = new THREE.DirectionalLight(0xffe2b8, 2.5);
+  const sun = new THREE.DirectionalLight(0xffe2b8, 2);
   sun.castShadow = true;
   sun.shadow.mapSize.setScalar(
     Math.min(GRAPHICS[quality].shadow, renderer.capabilities.maxTextureSize),
@@ -1007,7 +1007,7 @@ void main(){
       const fl = flash * (0.6 + 0.4 * Math.sin(world.time * 60));
       const sunCol = lerpHex(0xffe4c2, 0xffb27e, 1 - day, new THREE.Color());
       sun.color.copy(sunCol);
-      sun.intensity = 2.5 * day * (1 - 0.82 * s) + 0.05;
+      sun.intensity = 2.0 * day * (1 - 0.82 * s) + 0.05;
       hemi.intensity = 0.4 + 0.65 * day * (1 - 0.55 * s) + fl * 3;
       lerpHex(0xbfd8ff, 0x55606c, s, hemi.color);
       const fogC = lerpHex(

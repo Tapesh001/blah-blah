@@ -76,7 +76,9 @@ float surfaceNoise(vec3 p) {
  float road = 1.-smoothstep(3.0,4.5,vRoadDistance);
  float detailFade = 1.-smoothstep(35.,160.,length(vViewPosition));
  float mineral = surfaceNoise(vSurfacePosition*2.5)*0.65 + surfaceNoise(vSurfacePosition*17.)*0.35;
- float aggregate = surfaceNoise(vSurfacePosition*48.);
+ vec3 grainFootprint = fwidth(vSurfacePosition*48.);
+ float grainVisibility = 1.-smoothstep(0.25,1.,max(max(grainFootprint.x,grainFootprint.y),grainFootprint.z));
+ float aggregate = mix(0.5,surfaceNoise(vSurfacePosition*48.),grainVisibility);
  float strata = sin(vSurfacePosition.y*9.+surfaceNoise(vSurfacePosition*0.8)*5.);
  float cliff = 1.-smoothstep(0.65,0.88,abs(vSurfaceNormal.y));
  diffuseColor.rgb *= mix(mix(0.72,1.18,mineral)*(1.+cliff*strata*0.10),mix(0.82,1.2,aggregate),road*detailFade);
@@ -87,7 +89,7 @@ float surfaceNoise(vec3 p) {
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <normal_fragment_maps>',
       `#include <normal_fragment_maps>
- float grain = mix(surfaceNoise(vSurfacePosition*6.)*0.035 + surfaceNoise(vSurfacePosition*28.)*0.006, surfaceNoise(vSurfacePosition*48.)*0.0015,road)/(1.+length(vViewPosition)*0.04);
+ float grain = (surfaceNoise(vSurfacePosition*6.)*0.035 + surfaceNoise(vSurfacePosition*28.)*0.006)*(1.-road)/(1.+length(vViewPosition)*0.04);
  vec3 sx=dFdx(-vViewPosition), sy=dFdy(-vViewPosition);
  vec3 r1=cross(sy,normal), r2=cross(normal,sx);
  float det=dot(sx,r1);
@@ -95,6 +97,16 @@ float surfaceNoise(vec3 p) {
  normal=normalize(abs(det)*normal-gradient);
 `,
     );
+    // Asphalt stays matte in rain as well: no sharp sun/environment glints.
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <lights_physical_fragment>',
+      `#include <lights_physical_fragment>
+ material.roughness = mix(material.roughness,1.,road);
+ material.specularColor *= 1.-road;
+ material.specularColorBlended *= 1.-road;
+ material.specularF90 *= 1.-road;
+`,
+    );
   };
-  material.customProgramCacheKey = () => 'terrain-detail-v2';
+  material.customProgramCacheKey = () => 'terrain-detail-v3-matte-road';
 }
