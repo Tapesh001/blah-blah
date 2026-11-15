@@ -9,7 +9,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && prettier --check .",
-    "test": "vitest run",
+    "test": "vitest run && node --test tests/gfx/*.test.js",
     "e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
     "format": "prettier --write ."

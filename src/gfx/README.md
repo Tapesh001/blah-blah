@@ -6,6 +6,14 @@ from the existing game. Main at `243495d` has no `AGENTS.md`, `docs/plan/MASTER-
 The API below is **provisional**, not a claim to implement the absent shared `Gfx` contract.
 No shared types or game modules are created or changed.
 
+Integration update: M0 has now landed with explicitly provisional contracts.
+The standalone entry has a typed declaration and is included in the root
+production build and CI. It still does not implement the shared Gfx service.
+Three.js is now pinned to 0.187.0; PCFShadowMap replaces the removed
+PCFSoftShadowMap. The root browser suite validates rendering, pass toggles,
+resize and context restoration on this version. Earlier performance figures
+in the artifact handoff describe the original r170 run, not this upgrade.
+
 ## Run
 
 Use the existing `npm ci` and `npm run dev`, then open
@@ -17,7 +25,11 @@ they do not implement T0.3, T0.5 or T0.6. No image, model or HDRI assets are loa
 ```js
 import { createGfx } from './src/gfx/index.ts';
 
-const gfx = createGfx(canvas, { renderScale: 0.75, pixelRatio: 1, shadows: true });
+const gfx = createGfx(canvas, {
+  renderScale: 0.75,
+  pixelRatio: 1,
+  shadows: true,
+});
 gfx.scene.add(yourObject);
 gfx.render(camera, deltaTimeSeconds);
 gfx.setPassEnabled('shadows', false);
@@ -39,12 +51,12 @@ pixel-ratio setting (or uses the current device ratio if unspecified).
 
 ## Pipeline and ownership
 
-* `clear` clears the RGBA16F HDR colour buffer and unsigned-int depth texture.
-* `shadows` runs Three r170's shadow prepass exactly once, at the start of the first enabled scene
+- `clear` clears the RGBA16F HDR colour buffer and unsigned-int depth texture.
+- `shadows` runs Three r170's shadow prepass exactly once, at the start of the first enabled scene
   stage. PCF soft filtering is used. Cascades and texel snapping belong to T0.7.
-* `opaque`, `sky`, `ocean`, `transparents` share that HDR colour/depth attachment.
-* `post` copies into independent RGBA16F ping-pong targets; registered effects follow it.
-* `upscale` samples the final texture at canvas resolution, applies a diagnostic Reinhard mapping,
+- `opaque`, `sky`, `ocean`, `transparents` share that HDR colour/depth attachment.
+- `post` copies into independent RGBA16F ping-pong targets; registered effects follow it.
+- `upscale` samples the final texture at canvas resolution, applies a diagnostic Reinhard mapping,
   then Three's sRGB conversion. Built-in tone mapping is disabled. The temporary diagnostic
   presentation is **not T0.2**: bloom, auto exposure, AgX/ACES and dither remain next.
 
@@ -110,8 +122,8 @@ npm run build
 npx vite build --config tests/gfx/vite.config.js
 ```
 
-The root build intentionally remains unchanged and does not bundle the sandbox. Its separate
-build is in ignored `.local/gfx-dist/`; preview with
+The root build includes the sandbox. An optional separate
+build remains in ignored `.local/gfx-dist/`; preview with
 `npx vite preview --config tests/gfx/vite.config.js --port 4174`.
 
 For browser acceptance, install Playwright outside this checkout if it is not already available.

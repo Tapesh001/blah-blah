@@ -1,3 +1,3 @@
-// The shared src/contracts/index.ts is absent from this repository's main branch.
-// This entry intentionally exports the sandbox implementation without inventing shared types.
+// Standalone pipeline with a typed bridge. M0 contracts are provisional;
+// adapting this to the shared Gfx service remains an explicit integration task.
 export { createGfx } from './pipeline.js';
