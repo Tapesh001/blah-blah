@@ -17,10 +17,6 @@ namespace
 	// key points of the bike in body space, centimetres (+X forward, +Y right, +Z up)
 	const FVector RearAxle(-52, 0, 34), FrontAxle(56, 0, 34), Bracket(-5, 0, 30), SeatTop(-22, 0, 88), HeadTop(38, 0, 94), HeadLow(43, 0, 70);
 
-	FLinearColor Hex(uint32 RGB)
-	{
-		return FLinearColor::FromSRGBColor(FColor((RGB >> 16) & 255, (RGB >> 8) & 255, RGB & 255));
-	}
 }
 
 ACGBikePawn::ACGBikePawn()
@@ -85,6 +81,12 @@ void ACGBikePawn::Tick(float DeltaSeconds)
 	{
 		World->Storm = 0.1f + 0.35f * Progress;
 	}
+	Objective = bFinished ? TEXT("HARBOUR REACHED") : TEXT("RIDE TO THE HARBOUR");
+	BigText = FString::Printf(TEXT("%2.0f km/h"), Speed * 3.6f);
+	Lines.Reset();
+	Lines.Add(FString::Printf(TEXT("gear %d    cadence %3.0f"), Gear + 1, Cadence));
+	Bars.Reset();
+	Bars.Add({ bChainBroken ? TEXT("chain BROKEN") : TEXT("chain wear"), ChainWear, true });
 }
 
 void ACGBikePawn::Respawn()
@@ -103,9 +105,8 @@ void ACGBikePawn::Respawn()
 
 void ACGBikePawn::Simulate(float Dt)
 {
-	const APlayerController* PC = Cast<APlayerController>(GetController());
-	auto Down = [PC](const FKey& Key) { return PC && PC->IsInputKeyDown(Key); };
-	auto Hit = [PC](const FKey& Key) { return PC && PC->WasInputKeyJustPressed(Key); };
+	auto Down = [this](const FKey& Key) { return KeyDown(Key); };
+	auto Hit = [this](const FKey& Key) { return KeyHit(Key); };
 
 	if (Hit(EKeys::V))
 	{
@@ -212,7 +213,11 @@ void ACGBikePawn::Simulate(float Dt)
 	const float Rolling = Speed > 0.05f ? (bOffRoad ? 0.03f : 0.006f) * Mass * 9.81f : 0.f;
 	const float Gravity = -Mass * 9.81f * Grade;
 	const float Brake = Throttle < 0.f ? Mass * 7.f * -Throttle : 0.f;
-	if (!bAir)
+	if (Throttle > 0.f)
+	{
+		bStarted = true;
+	}
+	if (!bAir && bStarted)
 	{
 		Speed += (Drive - Aero - Rolling + Gravity - Brake) / Mass * Dt;
 	}
@@ -278,27 +283,6 @@ void ACGBikePawn::Simulate(float Dt)
 	}
 }
 
-UStaticMeshComponent* ACGBikePawn::AddPart(int32 Shape, UMaterialInterface* Material)
-{
-	UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
-	C->SetStaticMesh(World ? World->Shape(Shape) : nullptr);
-	C->SetMaterial(0, Material);
-	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	C->SetMobility(EComponentMobility::Movable);
-	C->AttachToComponent(Body, FAttachmentTransformRules::KeepRelativeTransform);
-	C->RegisterComponent();
-	Parts.Add(C);
-	return C;
-}
-
-void ACGBikePawn::SetTube(UStaticMeshComponent* Part, const FVector& A, const FVector& B, float Diameter)
-{
-	const FVector D = B - A;
-	Part->SetRelativeLocation((A + B) * 0.5);
-	Part->SetRelativeRotation(FRotationMatrix::MakeFromZ(D).Rotator());
-	Part->SetRelativeScale3D(FVector(Diameter / 100.0, Diameter / 100.0, D.Size() / 100.0));
-}
-
 void ACGBikePawn::BuildModel()
 {
 	if (!World)
@@ -316,9 +300,7 @@ void ACGBikePawn::BuildModel()
 
 	auto Tube = [&](const FVector& A, const FVector& B, float D, UMaterialInterface* M)
 	{
-		UStaticMeshComponent* C = AddPart(CylinderShape, M);
-		SetTube(C, A, B, D);
-		return C;
+		return AddTube(Body, A, B, D, M);
 	};
 	// wheels: tyre, rim disc and a spoke bar that shows the spin
 	const FVector Axle[2] = { RearAxle, FrontAxle };
@@ -326,7 +308,7 @@ void ACGBikePawn::BuildModel()
 	{
 		Wheel[i] = Tube(Axle[i] - FVector(0, 2.2, 0), Axle[i] + FVector(0, 2.2, 0), 68, Rubber);
 		Tube(Axle[i] - FVector(0, 2.6, 0), Axle[i] + FVector(0, 2.6, 0), 58, Steel);
-		Spoke[i] = AddPart(CubeShape, Rubber);
+		Spoke[i] = AddPart(Body, CubeShape, Rubber);
 	}
 	// frame
 	Tube(Bracket, SeatTop, 3.4, Paint);
@@ -336,10 +318,10 @@ void ACGBikePawn::BuildModel()
 	Tube(Bracket, RearAxle, 2.4, Paint);
 	Tube(HeadTop, HeadLow, 4.2, Paint);
 	Fork = Tube(HeadLow, FrontAxle, 3.0, Steel);
-	Bars = Tube(HeadTop + FVector(0, -24, 4), HeadTop + FVector(0, 24, 4), 2.6, Steel);
+	Handlebar = Tube(HeadTop + FVector(0, -24, 4), HeadTop + FVector(0, 24, 4), 2.6, Steel);
 	Tube(HeadTop, HeadTop + FVector(0, 0, 5), 3.0, Steel);
 	// saddle, chainring, cassette, chain
-	UStaticMeshComponent* Saddle = AddPart(CubeShape, Rubber);
+	UStaticMeshComponent* Saddle = AddPart(Body, CubeShape, Rubber);
 	Saddle->SetRelativeLocation(SeatTop + FVector(-2, 0, 4));
 	Saddle->SetRelativeScale3D(FVector(0.26, 0.13, 0.04));
 	Tube(Bracket + FVector(0, 4, 0), Bracket + FVector(0, 5, 0), 20, Steel);
@@ -348,16 +330,16 @@ void ACGBikePawn::BuildModel()
 	Tube(Bracket + FVector(0, 4.5, -9.5), RearAxle + FVector(0, 4.5, -5), 1.0, Steel);
 	for (int32 i = 0; i < 2; i++)
 	{
-		CrankArm[i] = AddPart(CylinderShape, Steel);
-		Thigh[i] = AddPart(CylinderShape, Trousers);
-		Shin[i] = AddPart(CylinderShape, Trousers);
+		CrankArm[i] = AddPart(Body, CylinderShape, Steel);
+		Thigh[i] = AddPart(Body, CylinderShape, Trousers);
+		Shin[i] = AddPart(Body, CylinderShape, Trousers);
 	}
 	// rider: torso, head, helmet, arms
 	Tube(FVector(-20, 0, 96), FVector(16, 0, 136), 27, Jacket);
-	UStaticMeshComponent* Head = AddPart(SphereShape, Skin);
+	UStaticMeshComponent* Head = AddPart(Body, SphereShape, Skin);
 	Head->SetRelativeLocation(FVector(25, 0, 151));
 	Head->SetRelativeScale3D(FVector(0.21));
-	UStaticMeshComponent* Lid = AddPart(SphereShape, Helmet);
+	UStaticMeshComponent* Lid = AddPart(Body, SphereShape, Helmet);
 	Lid->SetRelativeLocation(FVector(24, 0, 156));
 	Lid->SetRelativeScale3D(FVector(0.27, 0.24, 0.19));
 	for (int32 Side = -1; Side <= 1; Side += 2)

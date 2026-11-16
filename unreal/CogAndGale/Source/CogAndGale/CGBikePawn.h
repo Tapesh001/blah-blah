@@ -1,18 +1,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Pawn.h"
+#include "CGPlayerPawn.h"
 #include "CGBikePawn.generated.h"
 
 class USpringArmComponent;
 class UCameraComponent;
-class UStaticMeshComponent;
-class UMaterialInterface;
-class ACGWorld;
 
 /** The courier's bicycle: its own physics model, a built-in-code bike and rider, and both cameras. */
 UCLASS()
-class COGANDGALE_API ACGBikePawn : public APawn
+class COGANDGALE_API ACGBikePawn : public ACGPlayerPawn
 {
 	GENERATED_BODY()
 
@@ -29,16 +26,12 @@ public:
 	float ChainWear = 0.f;
 	float Progress = 0.f;
 	bool bChainBroken = false;
-	bool bFinished = false;
-	FString Prompt;
 
 private:
 	void Simulate(float Dt);
 	void Respawn();
 	void BuildModel();
 	void PoseModel();
-	UStaticMeshComponent* AddPart(int32 Shape, UMaterialInterface* Material);
-	static void SetTube(UStaticMeshComponent* Part, const FVector& A, const FVector& B, float Diameter);
 
 	UPROPERTY()
 	TObjectPtr<USceneComponent> Root;
@@ -49,17 +42,13 @@ private:
 	UPROPERTY()
 	TObjectPtr<UCameraComponent> Camera;
 	UPROPERTY()
-	TObjectPtr<ACGWorld> World;
-	UPROPERTY()
-	TArray<TObjectPtr<UStaticMeshComponent>> Parts;
-	UPROPERTY()
 	TObjectPtr<UStaticMeshComponent> Wheel[2];
 	UPROPERTY()
 	TObjectPtr<UStaticMeshComponent> Spoke[2];
 	UPROPERTY()
 	TObjectPtr<UStaticMeshComponent> Fork;
 	UPROPERTY()
-	TObjectPtr<UStaticMeshComponent> Bars;
+	TObjectPtr<UStaticMeshComponent> Handlebar;
 	UPROPERTY()
 	TObjectPtr<UStaticMeshComponent> Thigh[2];
 	UPROPERTY()
@@ -72,5 +61,5 @@ private:
 	float Heading = 0.f, Lean = 0.f, Grade = 0.f, Steer = 0.f;
 	float Crank = 0.f, WheelSpin = 0.f;
 	float ShiftCooldown = 0.f, CrashTimer = 0.f, RepairHold = 0.f;
-	bool bAir = false, bFirstPerson = false, bBrokenOnce = false;
+	bool bAir = false, bFirstPerson = false, bBrokenOnce = false, bStarted = false;
 };

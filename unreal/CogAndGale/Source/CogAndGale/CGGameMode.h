@@ -13,4 +13,11 @@ class COGANDGALE_API ACGGameMode : public AGameModeBase
 public:
 	ACGGameMode();
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+	virtual void Tick(float DeltaSeconds) override;
+
+private:
+	void StartChapter(int32 Index);
+
+	int32 Chapter = 0;
+	float DoneTime = 0.f;
 };

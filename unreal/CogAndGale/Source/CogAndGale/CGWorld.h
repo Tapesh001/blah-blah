@@ -44,7 +44,7 @@ public:
 	FVector2f Wind(float X, float Z) const;
 
 	/** A coloured material instance for props and vehicles. */
-	UMaterialInstanceDynamic* MakeSolid(FLinearColor Color, float Roughness = 0.7f, float Metallic = 0.f, FLinearColor Emissive = FLinearColor::Black);
+	UMaterialInstanceDynamic* MakeSolid(FLinearColor Color, float Roughness = 0.7f, float Metallic = 0.f, FLinearColor Emissive = FLinearColor::Black, bool bTwoSided = false);
 
 	UStaticMesh* Shape(int32 Kind);
 
@@ -52,6 +52,7 @@ private:
 	void LoadAssets();
 	void BuildSky();
 	void BuildTerrain(int32 Index);
+	void BuildRoads();
 	void BuildOcean();
 	void UpdateOcean();
 	void BuildScenery();
@@ -70,6 +71,10 @@ private:
 	TObjectPtr<UMaterialInterface> OceanMaterial;
 	UPROPERTY()
 	TObjectPtr<UMaterialInterface> SolidMaterial;
+	UPROPERTY()
+	TObjectPtr<UMaterialInterface> DoubleMaterial;
+	UPROPERTY()
+	TArray<TObjectPtr<UProceduralMeshComponent>> RoadMeshes;
 	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> LampGlow;
 	UPROPERTY()

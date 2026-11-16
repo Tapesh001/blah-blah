@@ -98,10 +98,10 @@ FVector2f ACGWorld::Wind(float X, float Z) const
 	return CG::WindAt(X, Z, SimTime, Storm);
 }
 
-UMaterialInstanceDynamic* ACGWorld::MakeSolid(FLinearColor Color, float Roughness, float Metallic, FLinearColor Emissive)
+UMaterialInstanceDynamic* ACGWorld::MakeSolid(FLinearColor Color, float Roughness, float Metallic, FLinearColor Emissive, bool bTwoSided)
 {
 	LoadAssets();
-	UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(SolidMaterial, this);
+	UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(bTwoSided ? DoubleMaterial : SolidMaterial, this);
 	M->SetVectorParameterValue(TEXT("Color"), Color);
 	M->SetScalarParameterValue(TEXT("Roughness"), Roughness);
 	M->SetScalarParameterValue(TEXT("Metallic"), Metallic);
@@ -128,6 +128,8 @@ void ACGWorld::LoadAssets()
 	if (!TerrainMaterial) { TerrainMaterial = Fallback; }
 	if (!OceanMaterial) { OceanMaterial = Fallback; }
 	if (!SolidMaterial) { SolidMaterial = Fallback; }
+	DoubleMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/CG/M_Double.M_Double"));
+	if (!DoubleMaterial) { DoubleMaterial = SolidMaterial; }
 	Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
 	Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	Cylinder = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
@@ -144,6 +146,7 @@ void ACGWorld::BeginPlay()
 	BuildSky();
 	BuildTerrain(0);
 	BuildTerrain(1);
+	BuildRoads();
 	BuildOcean();
 	BuildScenery();
 	UpdateWeather(0.f);
@@ -194,18 +197,18 @@ void ACGWorld::BuildSky()
 	P.bOverride_VignetteIntensity = true;
 	P.VignetteIntensity = 0.45f;
 	P.bOverride_AutoExposureMinBrightness = true;
-	P.AutoExposureMinBrightness = 0.6f;
+	P.AutoExposureMinBrightness = 0.03f;
 	P.bOverride_AutoExposureMaxBrightness = true;
-	P.AutoExposureMaxBrightness = 6.f;
+	P.AutoExposureMaxBrightness = 3.f;
 	P.bOverride_AutoExposureBias = true;
-	P.AutoExposureBias = 0.3f;
+	P.AutoExposureBias = 0.6f;
 }
 
 void ACGWorld::UpdateWeather(float DeltaSeconds)
 {
 	const float S = FMath::Clamp(Storm, 0.f, 1.f);
 	// The sun starts low and golden and sinks as the storm builds.
-	const float El = FMath::DegreesToRadians(FMath::Lerp(24.f, -3.f, FMath::SmoothStep(0.05f, 0.95f, S)));
+	const float El = FMath::DegreesToRadians(FMath::Lerp(26.f, 2.f, FMath::SmoothStep(0.05f, 0.95f, S)));
 	const float Az = FMath::DegreesToRadians(250.f);
 	const FVector ToSun(FMath::Sin(Az) * FMath::Cos(El), -FMath::Cos(Az) * FMath::Cos(El), FMath::Sin(El));
 	if (Sun)
@@ -213,7 +216,7 @@ void ACGWorld::UpdateWeather(float DeltaSeconds)
 		Sun->SetActorRotation((-ToSun).Rotation());
 		if (ULightComponent* L = Sun->GetLightComponent())
 		{
-			L->SetIntensity(FMath::Lerp(9.f, 1.5f, S));
+			L->SetIntensity(FMath::Lerp(9.f, 2.5f, S));
 			L->SetLightColor(Mix(Hex(0xfff0d8), Hex(0xffb070), 1.f - FMath::Clamp(ToSun.Z * 4.f, 0.f, 1.f)));
 		}
 	}
@@ -250,7 +253,7 @@ void ACGWorld::BuildTerrain(int32 Index)
 
 	const float Step = G.Size / (N - 1);
 	const FLinearColor GrassA = Hex(0x4f7a2c), GrassB = Hex(0x7c8f3a), Heath = Hex(0x6b5a4a), RockA = Hex(0x6e6a66), RockB = Hex(0x45413f);
-	const FLinearColor Sand = Hex(0xc9b98a), RoadC = Hex(0x2e3034), Gravel = Hex(0x8a8378), Bed = Hex(0x2b4a4a), Paint = Hex(0xd8d2b0);
+	const FLinearColor Sand = Hex(0xc9b98a), RoadC = Hex(0x2e3034), Gravel = Hex(0x8a8378), Bed = Hex(0x2b4a4a);
 
 	for (int32 j = 0; j < N; j++)
 	{
@@ -285,10 +288,6 @@ void ACGWorld::BuildTerrain(int32 Index)
 			{
 				C = Mix(C, Gravel, 1 - FMath::SmoothStep(4.2f, 9.f, Rd));
 				C = Mix(C, RoadC, 1 - FMath::SmoothStep(3.0f, 4.2f, Rd));
-				if (Rd < 0.45f && (FMath::FloorToInt((X + Z) / 6) & 1) == 0)
-				{
-					C = Paint;
-				}
 			}
 			C *= 0.9f + 0.35f * CG::Fbm(X / 3.1f, Z / 3.1f, 2);
 			// alpha carries "how much road" so the material can make tarmac smoother
@@ -307,6 +306,62 @@ void ACGWorld::BuildTerrain(int32 Index)
 	}
 	TerrainMesh[Index]->CreateMeshSection_LinearColor(0, Verts, Tris, Normals, UVs, Colors, Tangents, false, false);
 	TerrainMesh[Index]->SetMaterial(0, TerrainMaterial);
+}
+
+/* -------------------------------------------------------------- roads */
+
+void ACGWorld::BuildRoads()
+{
+	// a crisp ribbon laid on the flattened ground: tarmac with a dashed centre line
+	const float Offsets[4] = { -3.5f, -0.13f, 0.13f, 3.5f };
+	const FLinearColor Tarmac = Hex(0x2a2c30), Line = Hex(0xd8d2b0), PathC = Hex(0x7d766a);
+	for (int32 r = 0; r < 2; r++)
+	{
+		const TArray<CG::FRoadSample>& R = CG::Road(r);
+		TArray<FVector> Verts;
+		TArray<FVector> Normals;
+		TArray<FVector2D> UVs;
+		TArray<FLinearColor> Colors;
+		TArray<int32> Tris;
+		TArray<FProcMeshTangent> Tangents;
+		for (int32 i = 0; i < R.Num(); i++)
+		{
+			const FVector2f Side(FMath::Cos(R[i].Heading), FMath::Sin(R[i].Heading));
+			const bool bDash = r == 0 && ((i / 2) & 1) == 0;
+			for (int32 c = 0; c < 4; c++)
+			{
+				const float X = R[i].X + Side.X * Offsets[c];
+				const float Z = R[i].Z + Side.Y * Offsets[c];
+				Verts.Add(CG::ToUE(X, FMath::Max(R[i].H, CG::HeightAt(X, Z)) + 0.07f, Z));
+				Normals.Add(FVector::UpVector);
+				UVs.Add(FVector2D(c / 3.0, R[i].S / 7.0));
+				FLinearColor C = r == 0 ? Tarmac : PathC;
+				if (bDash && (c == 1 || c == 2))
+				{
+					C = Line;
+				}
+				C *= 0.85f + 0.3f * CG::Fbm(X / 1.7f, Z / 1.7f, 2);
+				C.A = r == 0 ? 1.f : 0.f;
+				Colors.Add(C);
+				Tangents.Add(FProcMeshTangent(1.f, 0.f, 0.f));
+			}
+			if (i > 0)
+			{
+				const int32 K = (i - 1) * 4;
+				for (int32 c = 0; c < 3; c++)
+				{
+					Tris.Append({ K + c, K + c + 4, K + c + 1, K + c + 1, K + c + 4, K + c + 5 });
+				}
+			}
+		}
+		UProceduralMeshComponent* Mesh = NewObject<UProceduralMeshComponent>(this);
+		Mesh->AttachToComponent(Root, FAttachmentTransformRules::KeepRelativeTransform);
+		Mesh->RegisterComponent();
+		Mesh->CreateMeshSection_LinearColor(0, Verts, Tris, Normals, UVs, Colors, Tangents, false, false);
+		Mesh->SetMaterial(0, TerrainMaterial);
+		Mesh->SetCastShadow(false);
+		RoadMeshes.Add(Mesh);
+	}
 }
 
 /* -------------------------------------------------------------- ocean */

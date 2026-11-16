@@ -34,19 +34,21 @@ def finish(mat):
     unreal.log(f'built {mat.get_path_name()}')
 
 
-# --- M_Solid: one parameterised surface for props and vehicles
-m = new_material('M_Solid')
-color = node(m, unreal.MaterialExpressionVectorParameter, -500, -100, parameter_name='Color',
-             default_value=unreal.LinearColor(0.5, 0.5, 0.5, 1))
-rough = node(m, unreal.MaterialExpressionScalarParameter, -500, 100, parameter_name='Roughness', default_value=0.7)
-metal = node(m, unreal.MaterialExpressionScalarParameter, -500, 200, parameter_name='Metallic', default_value=0.0)
-emis = node(m, unreal.MaterialExpressionVectorParameter, -500, 300, parameter_name='Emissive',
-            default_value=unreal.LinearColor(0, 0, 0, 1))
-mel.connect_material_property(color, '', MP.MP_BASE_COLOR)
-mel.connect_material_property(rough, '', MP.MP_ROUGHNESS)
-mel.connect_material_property(metal, '', MP.MP_METALLIC)
-mel.connect_material_property(emis, '', MP.MP_EMISSIVE_COLOR)
-finish(m)
+# --- M_Solid / M_Double: one parameterised surface for props and vehicles (Double is two-sided: hulls, sails)
+for solid_name, two_sided in (('M_Solid', False), ('M_Double', True)):
+    m = new_material(solid_name)
+    m.set_editor_property('two_sided', two_sided)
+    color = node(m, unreal.MaterialExpressionVectorParameter, -500, -100, parameter_name='Color',
+                 default_value=unreal.LinearColor(0.5, 0.5, 0.5, 1))
+    rough = node(m, unreal.MaterialExpressionScalarParameter, -500, 100, parameter_name='Roughness', default_value=0.7)
+    metal = node(m, unreal.MaterialExpressionScalarParameter, -500, 200, parameter_name='Metallic', default_value=0.0)
+    emis = node(m, unreal.MaterialExpressionVectorParameter, -500, 300, parameter_name='Emissive',
+                default_value=unreal.LinearColor(0, 0, 0, 1))
+    mel.connect_material_property(color, '', MP.MP_BASE_COLOR)
+    mel.connect_material_property(rough, '', MP.MP_ROUGHNESS)
+    mel.connect_material_property(metal, '', MP.MP_METALLIC)
+    mel.connect_material_property(emis, '', MP.MP_EMISSIVE_COLOR)
+    finish(m)
 
 # --- M_Terrain: vertex colour ground; alpha marks tarmac, which is smoother
 m = new_material('M_Terrain')

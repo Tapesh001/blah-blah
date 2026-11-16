@@ -247,7 +247,7 @@ namespace CG
 		ThePlaces.BikeHeading = RA[4].Heading;
 		ThePlaces.Harbour = FVector2f(RA[RA.Num() - 4].X, RA[RA.Num() - 4].Z);
 		ThePlaces.BoatStart = FVector2f(478, 62);
-		ThePlaces.BoatHeading = 1.2f;
+		ThePlaces.BoatHeading = 2.0f;
 		ThePlaces.Cove = FVector2f(1205, -208);
 		bReady = true;
 	}
@@ -329,7 +329,7 @@ namespace CG
 	FVector2f WindAt(float X, float Z, float Time, float Storm)
 	{
 		const FVector2f Base(-0.77f, 0.64f); // from the north-east
-		const float Speed = 5 + 12 * Storm;
+		const float Speed = 4 + 11 * Storm;
 		const float Gust = 0.75f + 0.5f * Fbm((X - Base.X * Time * Speed) / 120, (Z - Base.Y * Time * Speed) / 120, 2)
 			+ 0.35f * Storm * FMath::Sin(Time * 0.6f + X * 0.01f);
 		const float Veer = X > 950 ? -0.45f * FMath::SmoothStep(950.f, 1150.f, X) : 0.f;
