@@ -167,8 +167,8 @@ void ACGBikePawn::Simulate(float Dt)
 	float Efficiency = 1.f;
 	if (Cadence < 50.f) { Efficiency = FMath::Lerp(0.6f, 1.f, Cadence / 50.f); }
 	else if (Cadence > 105.f) { Efficiency = FMath::Max(0.3f, 1.f - (Cadence - 105.f) / 60.f); }
-	const float Power = (bSprint ? 620.f : 330.f) * FMath::Max(0.f, Throttle) * Efficiency;
-	float Drive = bChainBroken ? 0.f : FMath::Min(Power / FMath::Max(Speed, 1.5f), 320.f);
+	const float Power = (bSprint ? 850.f : 460.f) * FMath::Max(0.f, Throttle) * Efficiency;
+	float Drive = bChainBroken ? 0.f : FMath::Min(Power / FMath::Max(Speed, 1.5f), 380.f);
 	if (ShiftCooldown > 0.3f) { Drive *= 0.4f; }
 
 	// the chain: wears with effort, and is doomed to fail once on the ridge

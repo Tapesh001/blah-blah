@@ -53,6 +53,8 @@ private:
 	void BuildSky();
 	void BuildTerrain(int32 Index);
 	void BuildRoads();
+	void BuildGrass();
+	void UpdateGrass();
 	void BuildOcean();
 	void UpdateOcean();
 	void BuildScenery();
@@ -95,6 +97,14 @@ private:
 	TObjectPtr<UStaticMesh> Cylinder;
 	UPROPERTY()
 	TObjectPtr<UStaticMesh> Cone;
+
+	UPROPERTY()
+	TObjectPtr<UInstancedStaticMeshComponent> Grass;
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> GrassMaterial;
+	TArray<FVector2f> GrassOffset;
+	TArray<FIntPoint> GrassCell;
+	TArray<FVector2f> GrassShape;
 
 	// ocean scratch buffers
 	TArray<FVector2f> OceanGrid;

@@ -149,6 +149,7 @@ void ACGWorld::BeginPlay()
 	BuildRoads();
 	BuildOcean();
 	BuildScenery();
+	BuildGrass();
 	UpdateWeather(0.f);
 }
 
@@ -159,6 +160,7 @@ void ACGWorld::Tick(float DeltaSeconds)
 	Wet += ((Storm > 0.5f ? 1.f : 0.f) - Wet) * FMath::Min(1.f, DeltaSeconds * 0.05f);
 	UpdateWeather(DeltaSeconds);
 	UpdateOcean();
+	UpdateGrass();
 }
 
 /* ---------------------------------------------------------------- sky */
@@ -253,7 +255,7 @@ void ACGWorld::BuildTerrain(int32 Index)
 
 	const float Step = G.Size / (N - 1);
 	const FLinearColor GrassA = Hex(0x4f7a2c), GrassB = Hex(0x7c8f3a), Heath = Hex(0x6b5a4a), RockA = Hex(0x6e6a66), RockB = Hex(0x45413f);
-	const FLinearColor Sand = Hex(0xc9b98a), RoadC = Hex(0x2e3034), Gravel = Hex(0x8a8378), Bed = Hex(0x2b4a4a);
+	const FLinearColor Sand = Hex(0xc9b98a), RoadC = Hex(0x2e3034), Gravel = Hex(0x6f6a60), Bed = Hex(0x2b4a4a);
 
 	for (int32 j = 0; j < N; j++)
 	{
@@ -266,7 +268,7 @@ void ACGWorld::BuildTerrain(int32 Index)
 			const float HX = G.H[j * N + FMath::Min(N - 1, i + 1)] - G.H[j * N + FMath::Max(0, i - 1)];
 			const float HZ = G.H[FMath::Min(N - 1, j + 1) * N + i] - G.H[FMath::Max(0, j - 1) * N + i];
 			const FVector Nrm = FVector(-HX / (2 * Step), -HZ / (2 * Step), 1.0).GetSafeNormal();
-			Verts[K] = CG::ToUE(X, H, Z);
+			Verts[K] = CG::ToUE(X, H - 0.4f * (1 - FMath::SmoothStep(3.6f, 6.0f, G.Road[K])), Z);
 			Normals[K] = Nrm;
 			UVs[K] = FVector2D(X / 8.0, Z / 8.0);
 
@@ -286,7 +288,7 @@ void ACGWorld::BuildTerrain(int32 Index)
 			}
 			if (Rd < 9.f)
 			{
-				C = Mix(C, Gravel, 1 - FMath::SmoothStep(4.2f, 9.f, Rd));
+				C = Mix(C, Gravel, (1 - FMath::SmoothStep(3.8f, 6.5f, Rd)) * 0.75f);
 				C = Mix(C, RoadC, 1 - FMath::SmoothStep(3.0f, 4.2f, Rd));
 			}
 			C *= 0.9f + 0.35f * CG::Fbm(X / 3.1f, Z / 3.1f, 2);
@@ -313,7 +315,7 @@ void ACGWorld::BuildTerrain(int32 Index)
 void ACGWorld::BuildRoads()
 {
 	// a crisp ribbon laid on the flattened ground: tarmac with a dashed centre line
-	const float Offsets[4] = { -3.5f, -0.13f, 0.13f, 3.5f };
+	const float Offsets[4] = { -3.9f, -0.13f, 0.13f, 3.9f };
 	const FLinearColor Tarmac = Hex(0x2a2c30), Line = Hex(0xd8d2b0), PathC = Hex(0x7d766a);
 	for (int32 r = 0; r < 2; r++)
 	{
@@ -332,7 +334,7 @@ void ACGWorld::BuildRoads()
 			{
 				const float X = R[i].X + Side.X * Offsets[c];
 				const float Z = R[i].Z + Side.Y * Offsets[c];
-				Verts.Add(CG::ToUE(X, FMath::Max(R[i].H, CG::HeightAt(X, Z)) + 0.07f, Z));
+				Verts.Add(CG::ToUE(X, CG::HeightAt(X, Z) + 0.02f, Z));
 				Normals.Add(FVector::UpVector);
 				UVs.Add(FVector2D(c / 3.0, R[i].S / 7.0));
 				FLinearColor C = r == 0 ? Tarmac : PathC;
@@ -350,7 +352,7 @@ void ACGWorld::BuildRoads()
 				const int32 K = (i - 1) * 4;
 				for (int32 c = 0; c < 3; c++)
 				{
-					Tris.Append({ K + c, K + c + 4, K + c + 1, K + c + 1, K + c + 4, K + c + 5 });
+					Tris.Append({ K + c, K + c + 1, K + c + 4, K + c + 1, K + c + 5, K + c + 4 });
 				}
 			}
 		}
@@ -552,4 +554,80 @@ void ACGWorld::BuildScenery()
 		MakeInstances(Cylinder, MakeSolid(Hex(0x8b8478), 0.85f))->AddInstance(FTransform(FRotator::ZeroRotator, CG::ToUE(E.X + 12, H + 14, E.Z), FVector(10, 10, 30)));
 		MakeInstances(Sphere, MakeSolid(Hex(0x111111), 0.3f, 0.f, Hex(0x8fd8ff) * 40.f), false)->AddInstance(FTransform(FRotator::ZeroRotator, CG::ToUE(E.X + 12, H + 31, E.Z), FVector(4.8)));
 	}
+}
+
+/* -------------------------------------------------------------- grass */
+
+namespace
+{
+	const float GrassTile = 84.f;
+	const int32 GrassCount = 90000;
+}
+
+void ACGWorld::BuildGrass()
+{
+	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/CG/M_Grass.M_Grass"));
+	UStaticMesh* Plane = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+	if (!Base || !Plane)
+	{
+		return;
+	}
+	GrassMaterial = UMaterialInstanceDynamic::Create(Base, this);
+	Grass = MakeInstances(Plane, GrassMaterial, false);
+	FRand Rnd;
+	GrassOffset.SetNum(GrassCount);
+	GrassShape.SetNum(GrassCount);
+	GrassCell.Init(FIntPoint(MAX_int32, MAX_int32), GrassCount);
+	TArray<FTransform> Start;
+	Start.Init(FTransform(FRotator::ZeroRotator, FVector(0, 0, -100000), FVector(0.001)), GrassCount);
+	for (int32 i = 0; i < GrassCount; i++)
+	{
+		GrassOffset[i] = FVector2f(Rnd.Next(), Rnd.Next()) * GrassTile;
+		GrassShape[i] = FVector2f(0.55f + 0.6f * Rnd.Next(), Rnd.Next() * 360.f); // height, yaw
+	}
+	Grass->AddInstances(Start, false);
+}
+
+void ACGWorld::UpdateGrass()
+{
+	if (!Grass)
+	{
+		return;
+	}
+	FVector Cam = FVector::ZeroVector;
+	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (PC->PlayerCameraManager)
+		{
+			Cam = PC->PlayerCameraManager->GetCameraLocation();
+		}
+	}
+	const float CX = Cam.X / 100.f, CZ = Cam.Y / 100.f;
+	bool bChanged = false;
+	for (int32 i = 0; i < GrassCount; i++)
+	{
+		// each tuft lives in whichever copy of the tile is nearest the camera
+		const FIntPoint Cell(FMath::RoundToInt((CX - GrassOffset[i].X) / GrassTile), FMath::RoundToInt((CZ - GrassOffset[i].Y) / GrassTile));
+		if (Cell == GrassCell[i])
+		{
+			continue;
+		}
+		GrassCell[i] = Cell;
+		const float X = GrassOffset[i].X + Cell.X * GrassTile;
+		const float Z = GrassOffset[i].Y + Cell.Y * GrassTile;
+		const float H = CG::HeightAt(X, Z);
+		const float Slope = FMath::Abs(CG::HeightAt(X + 1, Z) - H) + FMath::Abs(CG::HeightAt(X, Z + 1) - H);
+		const bool bGrows = H > 2.5f && H < 108.f && Slope < 0.75f && FarFromRoads(X, Z, 5.5f);
+		const float Tall = bGrows ? GrassShape[i].X * (0.55f + 0.6f * CG::Fbm(X / 9, Z / 9, 2)) : 0.001f;
+		Grass->UpdateInstanceTransform(i, FTransform(FRotator(90, GrassShape[i].Y, 0), CG::ToUE(X, H + Tall * 0.5f - 0.04f, Z), FVector(Tall, 1.1, 1)), false, false, true);
+		bChanged = true;
+	}
+	if (bChanged)
+	{
+		Grass->MarkRenderStateDirty();
+	}
+	const FVector2f W = Wind(CX, CZ);
+	const float Speed = W.Size();
+	GrassMaterial->SetVectorParameterValue(TEXT("Wind"), FLinearColor(W.X / FMath::Max(Speed, 0.1f), W.Y / FMath::Max(Speed, 0.1f), 0, 0));
+	GrassMaterial->SetScalarParameterValue(TEXT("Strength"), 5.f + Speed * 2.2f);
 }

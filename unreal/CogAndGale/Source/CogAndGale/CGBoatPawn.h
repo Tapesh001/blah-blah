@@ -65,7 +65,7 @@ private:
 	// simulation state, metres and radians
 	float X = 0.f, Z = 0.f, Heading = 0.f;
 	float Forward = 0.f, Slip = 0.f, Heel = 0.f, Rudder = 0.f;
-	float SheetOut = 0.75f;
+	float SheetOut = 0.45f;
 	int32 Reef = 0;
 	float Boom = 0.2f, BoomSide = 1.f;
 	float Load = 0.f, Trim = 0.f, Fill = 0.f, Luff = 0.f;
@@ -76,7 +76,7 @@ private:
 	// camera
 	bool bFirstPerson = false;
 	float ViewBlend = 0.f;
-	float LookYaw = 0.f, LookPitch = -4.f;
+	float LookYaw = 18.f, LookPitch = -16.f;
 	FVector ChasePos = FVector::ZeroVector;
 	bool bChaseValid = false;
 
