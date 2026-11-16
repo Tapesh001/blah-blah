@@ -316,7 +316,7 @@ void ACGWorld::BuildRoads()
 {
 	// a crisp ribbon laid on the flattened ground: tarmac with a dashed centre line
 	const float Offsets[4] = { -3.9f, -0.13f, 0.13f, 3.9f };
-	const FLinearColor Tarmac = Hex(0x2a2c30), Line = Hex(0xd8d2b0), PathC = Hex(0x7d766a);
+	const FLinearColor Tarmac = Hex(0x1c1d20), Line = Hex(0xd8d2b0), PathC = Hex(0x7d766a);
 	for (int32 r = 0; r < 2; r++)
 	{
 		const TArray<CG::FRoadSample>& R = CG::Road(r);

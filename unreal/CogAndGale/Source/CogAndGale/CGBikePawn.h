@@ -26,6 +26,9 @@ public:
 	float ChainWear = 0.f;
 	float Progress = 0.f;
 	bool bChainBroken = false;
+	/** Set when the rider asks for the repair bench; the game mode opens it. */
+	bool bWantsBench = false;
+	void Repaired();
 
 private:
 	void Simulate(float Dt);

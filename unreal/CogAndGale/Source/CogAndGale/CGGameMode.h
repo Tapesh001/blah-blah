@@ -18,6 +18,9 @@ public:
 private:
 	void StartChapter(int32 Index);
 
+	UPROPERTY()
+	TObjectPtr<class ACGBikePawn> Bike;
+	bool bDebugBenchDone = false;
 	int32 Chapter = 0;
 	float DoneTime = 0.f;
 };

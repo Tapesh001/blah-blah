@@ -89,6 +89,13 @@ void ACGBikePawn::Tick(float DeltaSeconds)
 	Bars.Add({ bChainBroken ? TEXT("chain BROKEN") : TEXT("chain wear"), ChainWear, true });
 }
 
+void ACGBikePawn::Repaired()
+{
+	bChainBroken = false;
+	ChainWear = 0.f;
+	Prompt = TEXT("Chain repaired. Ride on to the harbour");
+}
+
 void ACGBikePawn::Respawn()
 {
 	const CG::FRoadHit Hit = CG::RoadNearest(X, Z);
@@ -188,21 +195,10 @@ void ACGBikePawn::Simulate(float Dt)
 	}
 	if (bChainBroken)
 	{
-		Prompt = TEXT("Chain snapped. Stop and hold E to repair");
-		if (Down(EKeys::E) && Speed < 1.f)
+		Prompt = Speed < 1.5f ? TEXT("Chain snapped. Press E to open the repair bench") : TEXT("Chain snapped. Brake to a stop (S)");
+		if (Hit(EKeys::E) && Speed < 1.5f)
 		{
-			RepairHold += Dt;
-			if (RepairHold > 2.f)
-			{
-				bChainBroken = false;
-				ChainWear = 0.f;
-				RepairHold = 0.f;
-				Prompt = TEXT("Chain repaired. Ride on to the harbour");
-			}
-		}
-		else
-		{
-			RepairHold = 0.f;
+			bWantsBench = true;
 		}
 	}
 
